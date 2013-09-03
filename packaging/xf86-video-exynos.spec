@@ -1,7 +1,4 @@
-# >> macros
-# << macros
-
-Name:       xorg-x11-drv-exynos
+Name:       xf86-video-exynos
 Summary:    X.Org X server driver for exynos
 Version:    0.2.93
 Release:    1
