@@ -6,7 +6,7 @@ ExclusiveArch:  %arm
 Group:      System/X Hardware Support
 License:    Samsung
 Source0:    %{name}-%{version}.tar.gz
-BuildRequires:  prelink
+
 
 %description
 This package provides the driver for the Samsung display device exynos
