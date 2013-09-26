@@ -26,8 +26,6 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
-execstack -c %{buildroot}%{_libdir}/xorg/modules/drivers/exynos_drv.so
-
 %files
 %defattr(-,root,root,-)
 %{_libdir}/xorg/modules/drivers/*.so
