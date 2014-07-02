@@ -55,7 +55,7 @@
 #include "sec_converter.h"
 #include "sec_util.h"
 #include "sec_xberc.h"
-
+#include <xf86RandR12.h>
 #include "common.h"
 
 static Bool SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height);
@@ -93,6 +93,8 @@ _secSetMainMode (ScrnInfoPtr pScrn, SECModePtr pSecMode)
     {
         xf86OutputPtr pOutput = pXf86CrtcConfig->output[i];
         SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+        if (!pOutputPriv)
+            continue;
         if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS ||
             pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_Unknown)
         {
@@ -100,7 +102,13 @@ _secSetMainMode (ScrnInfoPtr pScrn, SECModePtr pSecMode)
             return 1;
         }
     }
-
+    if (pSecMode->main_lcd_mode.hdisplay == 0 ||
+        pSecMode->main_lcd_mode.vdisplay == 0)
+    {
+        pSecMode->main_lcd_mode.hdisplay = 640;
+        pSecMode->main_lcd_mode.vdisplay = 480;
+        return 1;
+    }
     return -1;
 }
 
@@ -251,18 +259,21 @@ SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height)
                pScrn->virtualX,
                pScrn->virtualY,
                width, height);
-
+#ifdef NO_CRTC_MODE
+    pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
+#else
     if (pScrn->virtualX == width &&
         pScrn->virtualY == height)
     {
         return TRUE;
     }
-
+#endif
     secFbResize(pSec->pFb, width, height);
 
     /* set  the new size of pScrn */
     pScrn->virtualX = width;
     pScrn->virtualY = height;
+    pScrn->displayWidth = width;
     secExaScreenSetScrnPixmap (pScreen);
 
     secOutputDrmUpdate (pScrn);
@@ -515,9 +526,18 @@ secModePreInit (ScrnInfoPtr pScrn, int drm_fd)
 
     for (i = 0; i < pSecMode->plane_res->count_planes; i++)
         secPlaneInit (pScrn, pSecMode, i);
-
+#ifdef NO_CRTC_MODE
+    if (pSecMode->num_real_crtc == 0 ||
+        pSecMode->num_real_output == 0)
+    {
+        secOutputDummyInit(pScrn, pSecMode, FALSE);
+    }
+#endif //NO_CRTC_MODE
     _secSetMainMode (pScrn, pSecMode);
 
+    /* virtaul x and virtual y of the screen is ones from main lcd mode */
+    pScrn->virtualX = pSecMode->main_lcd_mode.hdisplay;
+    pScrn->virtualY = pSecMode->main_lcd_mode.vdisplay;
     xf86InitialConfiguration (pScrn, TRUE);
 
     /* soolim::
@@ -595,6 +615,25 @@ secModeDeinit (ScrnInfoPtr pScrn)
 
     /* mode->rotate_fb_id should have been destroyed already */
 
+#ifdef NO_CRTC_MODE
+    if (pSecMode->num_dummy_output > 0)
+    {
+        xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pScrn);
+        int i;
+        for (i = 0; i < xf86_config->num_crtc; i++)
+        {
+            xf86CrtcPtr pCrtc = xf86_config->crtc[i];
+            xf86CrtcDestroy (pCrtc);
+        }
+
+        for (i = 0; i < xf86_config->num_output; i++)
+        {
+            xf86OutputPtr pOutput = xf86_config->output[i];
+            xf86OutputDestroy(pOutput);
+        }
+    }
+#endif //NO_CRTC_MODE
+
     free (pSecMode);
     pSec->pSecMode = NULL;
 }
@@ -664,6 +703,8 @@ secModeCoveringCrtc (ScrnInfoPtr pScrn, BoxPtr pBox, xf86CrtcPtr pDesiredCrtc, B
 int secModeGetCrtcPipe (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return -1;
     return pCrtcPriv->pipe;
 }
 
@@ -1220,7 +1261,9 @@ secDisplaySetDispSetMode  (ScrnInfoPtr pScrn, SECDisplaySetMode set_mode)
 {
     SECPtr pSec = SECPTR (pScrn);
     SECModePtr pSecMode = pSec->pSecMode;
-
+#ifdef NO_CRTC_MODE
+    return TRUE;
+#endif
     if (pSecMode->set_mode == set_mode)
     {
         XDBG_INFO (MDISP, "set_mode(%d) is already set\n", set_mode);
@@ -1391,6 +1434,15 @@ secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
     SECModePtr pSecMode = pSec->pSecMode;
 
     /* if lcd is off, return true with msc = 0 */
+#ifdef NO_CRTC_MODE
+    if (pSec->isCrtcOn == FALSE)
+    {
+        *ust = 0;
+        *msc = 0;
+        return TRUE;
+    }
+    else
+#endif //NO_CRTC_MODE
     if (pSec->isLcdOff)
     {
         *ust = 0;
@@ -1569,10 +1621,19 @@ Bool secDisplayUpdateRequest(ScrnInfoPtr pScrn)
     Bool ret = FALSE;
     SECPageFlipPtr pPageFlip = NULL;
 
+#ifdef NO_CRTC_MODE
+    if (pCrtc == NULL)
+        return FALSE;
+#else
     XDBG_RETURN_VAL_IF_FAIL (pCrtc != NULL, FALSE);
-
+#endif
     pCrtcPriv =  pCrtc->driver_private;
+#ifdef NO_CRTC_MODE
+    if (pCrtcPriv == NULL)
+        return TRUE;
+#else
     XDBG_RETURN_VAL_IF_FAIL (pCrtcPriv != NULL, FALSE);
+#endif
 
     bo = pCrtcPriv->front_bo;
 
@@ -1680,3 +1741,104 @@ fail :
     return ret;
 }
 
+#ifdef NO_CRTC_MODE
+Bool
+secDisplayChangeMode (ScrnInfoPtr pScrn)
+{
+    SECPtr pSec = SECPTR(pScrn);
+    SECModePtr pSecMode = pSec->pSecMode;
+    xf86CrtcPtr pCrtc = NULL;
+    xf86OutputPtr pOutput = NULL;
+    int temp = 99, i = 0;
+    xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR(pScrn);
+    for (i = 0; i < config->num_crtc; i++)
+    {
+        if (config->crtc[i]->active == TRUE)
+        {
+            /* Nothing to do */
+            return TRUE;
+        }
+    }
+    SECOutputPrivPtr output_ref, output_next;
+/* Priority LVDS > HDMI > Virtual */
+    xorg_list_for_each_entry_safe (output_ref, output_next, &pSecMode->outputs, link)
+    {
+        if (output_ref->pOutput->crtc == NULL)
+            continue;
+        if (output_ref->mode_output == NULL)
+            continue;
+        if (output_ref->mode_output->connector_type == DRM_MODE_CONNECTOR_Unknown)
+            continue;
+        if (output_ref->mode_output->connector_type < temp)
+        {
+            pOutput = output_ref->pOutput;
+            pCrtc = output_ref->pOutput->crtc;
+            temp = (int) output_ref->mode_output->connector_type;
+        }
+    }
+
+    if (pCrtc != NULL && pOutput != NULL && pCrtc->active == FALSE)
+    {
+        DisplayModePtr max_mode = xf86CVTMode( 4096, 4096, 60, 0, 0);
+        DisplayModePtr mode =
+                xf86OutputFindClosestMode(pOutput, max_mode);
+        if (mode == NULL)
+        {
+            XDBG_ERROR(MDISP,
+                       "Can't find display mode for output: %s\n", pOutput->name);
+            if (max_mode)
+                free(max_mode);
+            return FALSE;
+        }
+        if (!RRScreenSizeSet(pScrn->pScreen,
+                             mode->HDisplay, mode->VDisplay,
+                             pOutput->mm_width, pOutput->mm_height))
+        {
+            XDBG_ERROR(MDISP,
+                       "Can't setup screen size H:%d V:%d for output: %s\n", mode->HDisplay, mode->VDisplay);
+            if (max_mode)
+                free(max_mode);
+            return FALSE;
+        }
+        if (!xf86CrtcSetModeTransform(pCrtc, mode, RR_Rotate_0, NULL, 0, 0))
+        {
+            XDBG_ERROR(MDISP,
+                       "Can't transform Crtc to mode: %s\n", pCrtc, mode->name);
+            if (max_mode)
+                free(max_mode);
+            RRScreenSizeSet(pScrn->pScreen, 640, 480, 0, 0);
+            return FALSE;
+        }
+        if (max_mode)
+            free(max_mode);
+        pSec->enableCursor = TRUE;
+        secCrtcCursorEnable (pScrn, TRUE);
+//        xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR(pScrn);
+//        for (temp = 0; temp < config->num_output; temp++)
+//        {
+//            if (config->output[temp] == pOutput)
+//            {
+//                config->compat_output = temp;
+//                break;
+//            }
+//        }
+        xf86SetScrnInfoModes(pScrn);
+        xf86RandR12TellChanged(pScrn->pScreen);
+    }
+
+    if (pSec->isCrtcOn == FALSE)
+    {
+        pSec->enableCursor = FALSE;
+        secCrtcCursorEnable (pScrn, FALSE);
+    }
+
+    if (pCrtc == NULL)
+    {
+        RRScreenSizeSet(pScrn->pScreen, 640, 480, 0, 0);
+        xf86SetScrnInfoModes(pScrn);
+        xf86RandR12TellChanged(pScrn->pScreen);
+    }
+
+    return TRUE;
+}
+#endif

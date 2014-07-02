@@ -329,9 +329,24 @@ _check_hw_restriction (ScrnInfoPtr pScrn, int crtc_id, int buf_w,
                        int *new_src_x, int *new_src_w,
                        int *new_dst_x, int *new_dst_w)
 {
-    SECOutputPrivPtr pOutputPriv = secOutputGetPrivateForConnType (pScrn, DRM_MODE_CONNECTOR_LVDS);
+#ifdef NO_CRTC_MODE
+    SECOutputPrivPtr pOutputPriv = NULL;
+    int i = 1;
+    while (i <= DRM_MODE_CONNECTOR_VIRTUAL)
+    {
+        pOutputPriv = secOutputGetPrivateForConnType (pScrn, i++);
+        if (pOutputPriv != NULL && pOutputPriv->pOutput->crtc != NULL)
+            break;
+        pOutputPriv = NULL;
+    }
+    if (pOutputPriv == NULL)
+        return FALSE;
+    int max = pScrn->virtualX;
+#else
     SECModePtr pSecMode = (SECModePtr) SECPTR (pScrn)->pSecMode;
+    SECOutputPrivPtr pOutputPriv = secOutputGetPrivateForConnType (pScrn, DRM_MODE_CONNECTOR_LVDS);
     int max = pSecMode->main_lcd_mode.hdisplay;
+#endif
     int start, end, diff;
     Bool virtual_screen;
 

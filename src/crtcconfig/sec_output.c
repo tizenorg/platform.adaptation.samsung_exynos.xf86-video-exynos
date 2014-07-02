@@ -3,6 +3,7 @@
 xserver-xorg-video-exynos
 
 Copyright 2011 Samsung Electronics co., Ltd. All Rights Reserved.
+Copyright 2013 Intel Corporation
 
 Contact: SooChan Lim <sc1.lim@samsung.com>
 
@@ -116,6 +117,10 @@ static void
 _secOutputAttachEdid(xf86OutputPtr pOutput)
 {
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+    {
+        return;
+    }
     drmModeConnectorPtr koutput = pOutputPriv->mode_output;
     SECModePtr pSecMode = pOutputPriv->pSecMode;
     drmModePropertyBlobPtr edid_blob = NULL;
@@ -181,10 +186,30 @@ _secOutputPropertyIgnore(drmModePropertyPtr prop)
 }
 
 static xf86OutputStatus
-SECOutputDetect(xf86OutputPtr output)
+SECOutputDetect(xf86OutputPtr pOutput)
 {
     /* go to the hw and retrieve a new output struct */
-    SECOutputPrivPtr pOutputPriv = output->driver_private;
+    SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+
+    if (pOutputPriv == NULL)
+    {
+#ifdef NO_CRTC_MODE
+        if (pOutput->randr_output && pOutput->randr_output->numUserModes)
+        {
+            xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pOutput->scrn);
+
+            if (xf86_config->output[xf86_config->num_output-1] == pOutput)
+            {
+               SECPtr pSec = (SECPtr) pOutput->scrn->driverPrivate;
+               secOutputDummyInit(pOutput->scrn, pSec->pSecMode, TRUE);
+            }
+
+            return XF86OutputStatusConnected;
+        }
+#endif //NO_CRTC_MODE
+        return XF86OutputStatusDisconnected;
+    }
+
     SECModePtr pSecMode = pOutputPriv->pSecMode;
     xf86OutputStatus status;
 //    char *conn_str[] = {"connected", "disconnected", "unknow"};
@@ -219,7 +244,7 @@ SECOutputDetect(xf86OutputPtr output)
     case DRM_MODE_DISCONNECTED:
         status = XF86OutputStatusDisconnected;
         /* unset write-back clone */
-        secPropUnSetDisplayMode (output);
+        secPropUnSetDisplayMode (pOutput);
         break;
     default:
     case DRM_MODE_UNKNOWNCONNECTION:
@@ -233,12 +258,24 @@ static Bool
 SECOutputModeValid(xf86OutputPtr pOutput, DisplayModePtr pModes)
 {
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+    {
+#ifdef NO_CRTC_MODE
+        if (pModes->type & M_T_DEFAULT)
+            return MODE_BAD;
+        return MODE_OK;
+#else
+        return MODE_ERROR;
+#endif //NO_CRTC_MODE
+    }
     drmModeConnectorPtr koutput = pOutputPriv->mode_output;
     int i;
 
     /* driver want to remain available modes which is same as mode
        supported from drmmode */
+#if NO_CRTC_MODE
     if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS)
+#endif
     {
         for (i = 0; i < koutput->count_modes; i++)
         {
@@ -255,9 +292,19 @@ SECOutputModeValid(xf86OutputPtr pOutput, DisplayModePtr pModes)
 static DisplayModePtr
 SECOutputGetModes(xf86OutputPtr pOutput)
 {
-    SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
-    drmModeConnectorPtr koutput = pOutputPriv->mode_output;
     DisplayModePtr Modes = NULL;
+    SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+    {
+#ifdef NO_CRTC_MODE
+        Modes = xf86ModesAdd(Modes, xf86CVTMode(1024,
+                                                768,
+                                                60, 0, 0));
+#endif
+        return Modes;
+    }
+
+    drmModeConnectorPtr koutput = pOutputPriv->mode_output;
     int i;
     SECPtr pSec = SECPTR (pOutput->scrn);
     DisplayModePtr Mode;
@@ -288,6 +335,10 @@ static void
 SECOutputDestory(xf86OutputPtr pOutput)
 {
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+    {
+        return;
+    }
     SECPtr pSec = SECPTR (pOutput->scrn);
     int i;
 
@@ -317,6 +368,8 @@ static void
 SECOutputDpms(xf86OutputPtr pOutput, int dpms)
 {
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+        return;
     drmModeConnectorPtr koutput = pOutputPriv->mode_output;
     SECModePtr pSecMode = pOutputPriv->pSecMode;
     SECPtr pSec = SECPTR (pOutput->scrn);
@@ -475,6 +528,8 @@ static void
 SECOutputCreateReaources(xf86OutputPtr pOutput)
 {
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+        return;
     drmModeConnectorPtr mode_output = pOutputPriv->mode_output;
     SECModePtr pSecMode = pOutputPriv->pSecMode;
     int i, j, err;
@@ -580,6 +635,8 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
                      RRPropertyValuePtr value)
 {
     SECOutputPrivPtr pOutputPriv = output->driver_private;
+    if (pOutputPriv == NULL)
+        return TRUE;
     SECModePtr pSecMode = pOutputPriv->pSecMode;
     int i;
 
@@ -636,7 +693,11 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
      */
     /* set the hidden properties : features for sec debugging*/
     /* TODO : xberc can works on only LVDS????? */
-    if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS)
+#ifdef NO_CRTC_MODE
+        if ((pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA) || (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL))
+#else
+        if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS)
+#endif
     {
         if (secPropSetLvdsFunc (output, property, value))
             return TRUE;
@@ -654,6 +715,7 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
             return TRUE;
     }
     /* set the hidden properties : features for driver specific funtions */
+#ifndef NO_CRTC_MODE
     if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
         pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIB ||
         pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL)
@@ -662,7 +724,7 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
         if (secPropSetDisplayMode(output, property, value))
             return TRUE;
     }
-
+#endif
     return TRUE;
 }
 
@@ -698,12 +760,16 @@ static const xf86OutputFuncsRec sec_output_funcs =
 Bool
 secOutputDrmUpdate (ScrnInfoPtr pScrn)
 {
-    SECModePtr pSecMode = (SECModePtr) SECPTR (pScrn)->pSecMode;
+    SECPtr pSec = SECPTR (pScrn);
+    SECModePtr pSecMode = pSec->pSecMode;
     Bool ret = TRUE;
     int i;
 
     for (i = 0; i < pSecMode->mode_res->count_connectors; i++)
     {
+#ifdef NO_CRTC_MODE
+                ret = TRUE;
+#endif
         SECOutputPrivPtr pOutputPriv = NULL;
         SECOutputPrivPtr pCur, pNext;
         drmModeConnectorPtr koutput;
@@ -721,24 +787,38 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
 
         if (!pOutputPriv)
         {
+#ifdef NO_CRTC_MODE
+            continue;
+#else
             ret = FALSE;
             break;
+#endif
         }
-
+#ifdef NO_CRTC_MODE
+        pOutputPriv->pOutput->crtc = NULL;
+#endif
         koutput = drmModeGetConnector (pSecMode->fd,
                                        pSecMode->mode_res->connectors[i]);
         if (!koutput)
         {
+#ifdef NO_CRTC_MODE
+            continue;
+#else
             ret = FALSE;
             break;
+#endif
         }
 
         kencoder = drmModeGetEncoder (pSecMode->fd, koutput->encoders[0]);
         if (!kencoder)
         {
             drmModeFreeConnector (koutput);
+#ifdef NO_CRTC_MODE
+            continue;
+#else
             ret = FALSE;
             break;
+#endif
         }
 
         if (pOutputPriv->mode_output)
@@ -754,27 +834,139 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
             pOutputPriv->mode_encoder = NULL;
         }
         pOutputPriv->mode_encoder = kencoder;
-
+#ifdef NO_CRTC_MODE
+        SECCrtcPrivPtr crtc_ref=NULL, crtc_next=NULL;
+        xorg_list_for_each_entry_safe (crtc_ref, crtc_next, &pSecMode->crtcs, link)
+        {
+            if (pOutputPriv->mode_encoder->crtc_id == crtc_ref->mode_crtc->crtc_id)
+            {
+                pOutputPriv->pOutput->crtc = crtc_ref->pCrtc;
+            }
+        }
+#endif
         XDBG_INFO (MSEC, "drm update : connect(%d, type:%d, status:%s) encoder(%d) crtc(%d).\n",
                    pSecMode->mode_res->connectors[i], koutput->connector_type,
                    conn_str[pOutputPriv->mode_output->connection-1],
                    kencoder->encoder_id, kencoder->crtc_id);
-#if 0
+#ifdef NO_CRTC_MODE
         /* Does these need to update? */
-        pOutput->mm_width = koutput->mmWidth;
-        pOutput->mm_height = koutput->mmHeight;
-
-        pOutput->possible_crtcs = kencoder->possible_crtcs;
-        pOutput->possible_clones = kencoder->possible_clones;
+        pOutputPriv->pOutput->mm_width = koutput->mmWidth;
+        pOutputPriv->pOutput->mm_height = koutput->mmHeight;
+        pOutputPriv->pOutput->possible_crtcs = kencoder->possible_crtcs;
+        pOutputPriv->pOutput->possible_clones = kencoder->possible_clones;
 #endif
     }
-
+#ifdef NO_CRTC_MODE
+    SECCrtcPrivPtr crtc_ref=NULL, crtc_next=NULL;
+    xorg_list_for_each_entry_safe (crtc_ref, crtc_next, &pSecMode->crtcs, link)
+    {
+        crtc_ref->pCrtc->enabled = xf86CrtcInUse(crtc_ref->pCrtc);
+    }
+    xf86DisableUnusedFunctions(pScrn);
+    pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
+#endif
     if (!ret)
         xf86DrvMsg (pScrn->scrnIndex, X_ERROR, "drm(output) update error. (%s)\n", strerror (errno));
-
     return ret;
 }
+#ifdef NO_CRTC_MODE
+Bool
+secOutputDummyInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, Bool late)
+{
+    xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pScrn);
+    xf86OutputPtr pOutput;
+    xf86CrtcPtr pCrtc;
+    RROutputPtr clones[32];
+    RRCrtcPtr crtcs[32];
+    char buf[80];
+    int i, len;
 
+    if (pSecMode->num_dummy_output >= 32)
+        return FALSE;
+
+    XDBG_DEBUG(MDISP,"(late=%d, num_dummy=%d)\n", late, pSecMode->num_dummy_output+1);
+
+    len = sprintf(buf, "DUMMY%d", pSecMode->num_dummy_output+1);
+    pOutput = xf86OutputCreate(pScrn, &sec_output_funcs, buf);
+    if (!pOutput)
+    {
+        return FALSE;
+    }
+
+    pCrtc = secCrtcDummyInit(pScrn);
+
+    if (pCrtc == NULL)
+    {
+        xf86OutputDestroy(pOutput);
+        return FALSE;
+    }
+
+    pOutput->mm_width = 0;
+    pOutput->mm_height = 0;
+    pOutput->interlaceAllowed = FALSE;
+    pOutput->subpixel_order = SubPixelNone;
+
+    pOutput->possible_crtcs = ~((1 << pSecMode->num_real_crtc) - 1);
+    pOutput->possible_clones = ~((1 << pSecMode->num_real_output) - 1);
+
+    if (late) {
+        ScreenPtr pScreen = xf86ScrnToScreen(pScrn);
+        pCrtc->randr_crtc = RRCrtcCreate(pScreen, pCrtc);
+        pOutput->randr_output = RROutputCreate(pScreen, buf, len, pOutput);
+        if (pCrtc->randr_crtc == NULL || pOutput->randr_output == NULL)
+        {
+            xf86OutputDestroy(pOutput);
+            xf86CrtcDestroy(pCrtc);
+            return FALSE;
+        }
+
+        RRPostPendingProperties(pOutput->randr_output);
+
+        for (i = pSecMode->num_real_output; i < xf86_config->num_output; i++)
+            clones[i - pSecMode->num_real_output] = xf86_config->output[i]->randr_output;
+        XDBG_RETURN_VAL_IF_FAIL(i - pSecMode->num_real_output == pSecMode->num_dummy_output + 1, FALSE);
+
+        for (i = pSecMode->num_real_crtc; i < xf86_config->num_crtc; i++)
+            crtcs[i - pSecMode->num_real_crtc] = xf86_config->crtc[i]->randr_crtc;
+        XDBG_RETURN_VAL_IF_FAIL(i - pSecMode->num_real_crtc == pSecMode->num_dummy_output + 1, FALSE);
+
+        for (i = pSecMode->num_real_output; i < xf86_config->num_output; i++)
+        {
+            RROutputPtr rr_output = xf86_config->output[i]->randr_output;
+
+            if (!RROutputSetCrtcs(rr_output, crtcs, pSecMode->num_dummy_output + 1) ||
+                !RROutputSetClones(rr_output, clones, pSecMode->num_dummy_output + 1))
+                goto err;
+        }
+
+        RRCrtcSetRotations(pCrtc->randr_crtc,
+                   RR_Rotate_All | RR_Reflect_All);
+    }
+
+    pSecMode->num_dummy_output++;
+    return TRUE;
+
+err:
+    for (i = 0; i < xf86_config->num_output; i++)
+    {
+        pOutput = xf86_config->output[i];
+        if (pOutput->driver_private)
+            continue;
+
+        xf86OutputDestroy(pOutput);
+    }
+
+    for (i = 0; i < xf86_config->num_crtc; i++)
+    {
+        pCrtc = xf86_config->crtc[i];
+        if (pCrtc->driver_private)
+            continue;
+        xf86CrtcDestroy(pCrtc);
+    }
+    pSecMode->num_dummy_output = -1;
+    return FALSE;
+}
+#endif //NO_CRTC_MODE
 void
 secOutputInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
 {
@@ -838,12 +1030,17 @@ secOutputInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
     pOutputPriv->pOutput = pOutput;
     /* TODO : soolim : management crtc privates */
     xorg_list_add(&pOutputPriv->link, &pSecMode->outputs);
+#ifdef NO_CRTC_MODE
+    ++(pSecMode->num_real_output);
+#endif
 }
 
 int
 secOutputDpmsStatus(xf86OutputPtr pOutput)
 {
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+    if (pOutputPriv == NULL)
+        return 0;
     return pOutputPriv->dpms_mode;
 }
 
@@ -871,8 +1068,8 @@ secOutputGetPrivateForConnType (ScrnInfoPtr pScrn, int connect_type)
                 return pCur;
         }
     }
-
+#ifndef NO_CRTC_MODE
     XDBG_ERROR (MSEC, "no output for connect_type(%d) \n", connect_type);
-
+#endif
     return NULL;
 }
