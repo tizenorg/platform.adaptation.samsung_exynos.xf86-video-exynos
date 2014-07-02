@@ -1630,7 +1630,13 @@ _secVideoArrangeLayerPos (SECPortPrivPtr pPort, Bool by_notify)
     SECPortPrivPtr pCur = NULL, pNext = NULL;
     SECPortPrivPtr pAnother = NULL;
     int i = 0;
-
+#ifdef NO_CRTC_MODE
+/* Sorry This is temporary part */
+    secCrtcCursorEnable (pPort->pScrn, FALSE);
+    secLayerSetPos (pPort->layer, LAYER_UPPER);
+    return;
+/* ************************* */
+#endif
     xorg_list_for_each_entry_safe (pCur, pNext, &layer_owners, link)
     {
         if (pCur == pPort)
@@ -2453,6 +2459,13 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
                   DrawablePtr pDraw)
 {
     SECPtr pSec = SECPTR (pScrn);
+#ifdef NO_CRTC_MODE
+    if (pSec->isCrtcOn == FALSE)
+    {
+        XDBG_WARNING (MVDO, "XV PutImage Disabled (No active CRTCs)\n");
+        return BadRequest;
+    }
+#endif
     SECModePtr pSecMode = (SECModePtr)SECPTR (pScrn)->pSecMode;
     SECVideoPrivPtr pVideo = SECPTR (pScrn)->pVideoPriv;
     SECPortPrivPtr pPort = (SECPortPrivPtr) data;

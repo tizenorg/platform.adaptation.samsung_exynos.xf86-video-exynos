@@ -761,7 +761,7 @@ _secVirtualVideoGetBlackBuffer (SECPortPrivPtr pPort)
 {
     int i;
 
-    if (!pPort->outbuf[0])
+    if (!pPort->outbuf)
     {
         XDBG_RETURN_VAL_IF_FAIL (pPort->pDraw != NULL, NULL);
         _secVirtualVideoEnsureOutBuffers (pPort->pScrn, pPort, pPort->id,
@@ -1071,7 +1071,7 @@ _secVirtualVideoComposite (SECVideoBuf *src, SECVideoBuf *dst,
 }
 
 static int
-_secVirtualVideoCompositeExtLayers (SECPortPrivPtr pPort)
+_secVirtualVideoCompositeExtLayers (SECPortPrivPtr pPort, int connector_type)
 {
     SECVideoBuf *dst_buf = NULL;
     SECLayer    *lower_layer = NULL;
@@ -1080,6 +1080,9 @@ _secVirtualVideoCompositeExtLayers (SECPortPrivPtr pPort)
     xRectangle   rect = {0,};
     int index;
     Bool comp = FALSE;
+
+    if (!_secVirtualVideoEnsureOutBuffers (pPort->pScrn, pPort, pPort->id, pPort->pDraw->width, pPort->pDraw->height))
+        return FALSE;
 
     index = _secVirtualVideoGetOutBufferIndex (pPort);
     if (index < 0)
@@ -1112,7 +1115,9 @@ _secVirtualVideoCompositeExtLayers (SECPortPrivPtr pPort)
     /* before compositing, flush all */
     secUtilCacheFlush (pPort->pScrn);
 
-    ui_buf = _secVirtualVideoGetUIBuffer (pPort, DRM_MODE_CONNECTOR_VIRTUAL);
+    comp = TRUE;//if set to FALSE capture will be black. something with layers?
+
+    ui_buf = _secVirtualVideoGetUIBuffer (pPort, connector_type); //Need to choose active connector DRM_MODE_CONNECTOR_VIRTUAL
     if (ui_buf)
     {
         XDBG_DEBUG (MVA, "ui : %c%c%c%c  %dx%d (%d,%d %dx%d) => dst : %c%c%c%c  %dx%d (%d,%d %dx%d)\n",
@@ -1136,7 +1141,7 @@ _secVirtualVideoCompositeExtLayers (SECPortPrivPtr pPort)
             return FALSE;
         }
 
-        comp = TRUE;
+//        comp = TRUE;
     }
 
     upper_layer = secLayerFind (LAYER_OUTPUT_EXT, LAYER_UPPER);
@@ -1280,7 +1285,7 @@ fail_layer_noti:
 }
 
 static int
-_secVirtualVideoPutStill (SECPortPrivPtr pPort)
+_secVirtualVideoPutStill (SECPortPrivPtr pPort, int connector_type)
 {
     SECModePtr pSecMode = (SECModePtr)SECPTR (pPort->pScrn)->pSecMode;
     SECVideoBuf *pix_buf = NULL;
@@ -1297,12 +1302,12 @@ _secVirtualVideoPutStill (SECPortPrivPtr pPort)
         pPort->retire_timer = NULL;
     }
 
-    comp = FALSE;
+    comp = TRUE;//if set to FALSE capture will be black. something with layers?
 
     pix_buf = _secVirtualVideoGetDrawableBuffer (pPort);
     XDBG_GOTO_IF_FAIL (pix_buf != NULL, done_still);
 
-    ui_buf = _secVirtualVideoGetUIBuffer (pPort, DRM_MODE_CONNECTOR_LVDS);
+    ui_buf = _secVirtualVideoGetUIBuffer (pPort, connector_type);
     XDBG_GOTO_IF_FAIL (ui_buf != NULL, done_still);
 
     tbm_bo_map (pix_buf->bo[0], TBM_DEVICE_2D, TBM_OPTION_WRITE);
@@ -1542,9 +1547,9 @@ _secVirtualVideoPutVideoOnly (SECPortPrivPtr pPort)
 }
 
 static int
-_secVirtualVideoPutExt (SECPortPrivPtr pPort)
+_secVirtualVideoPutExt (SECPortPrivPtr pPort, int active_connector)
 {
-    if (_secVirtualVideoCompositeExtLayers (pPort))
+    if (_secVirtualVideoCompositeExtLayers (pPort, active_connector))
         return Success;
 
     return BadRequest;
@@ -1780,16 +1785,35 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
 
     pPort->need_damage = TRUE;
 
+    /*find what connector is active*/
+    int active_connector = -1, i = 0; //DRM_MODE_CONNECTOR_HDMIA
+    xf86CrtcConfigPtr pXf86CrtcConfig;
+    xf86OutputPtr pOutput;
+
+    pXf86CrtcConfig = XF86_CRTC_CONFIG_PTR (pPort->pScrn);
+
+    for ( i = 0; i < pXf86CrtcConfig->num_output; i++)
+    {
+        if (pXf86CrtcConfig->output[i]->status == XF86OutputStatusConnected)
+        {
+            pOutput = pXf86CrtcConfig->output[i];
+            if (!strcmp(pOutput->name, "HDMI1"))
+            {
+                active_connector = DRM_MODE_CONNECTOR_HDMIA;
+            } else if (!strcmp(pOutput->name, "Virtual1"))
+            {
+                active_connector = DRM_MODE_CONNECTOR_VIRTUAL;
+            }
+
+        }
+    }
+    XDBG_RETURN_VAL_IF_FAIL (active_connector != -1, BadRequest);
+
     if (pPort->capture == CAPTURE_MODE_STILL && pPort->display == DISPLAY_LCD)
     {
         XDBG_DEBUG (MVA, "still mode.\n");
 
-        if (1)
-            ret = _secVirtualVideoPutStill (pPort);
-        else
-            /* camera buffer can't be mapped. we should use WB to capture screen */
-            ret = _secVirtualVideoPutWB (pPort);
-
+        ret = _secVirtualVideoPutStill (pPort, active_connector);
         XDBG_GOTO_IF_FAIL (ret == Success, put_still_fail);
     }
     else if (pPort->capture == CAPTURE_MODE_STREAM && pPort->display == DISPLAY_LCD)
@@ -1801,8 +1825,11 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
             ret = BadRequest;
             goto put_still_fail;
         }
-
-        ret = _secVirtualVideoPutWB (pPort);
+//#ifndef SNEAKERS
+        if (0)
+            ret = _secVirtualVideoPutWB (pPort);
+        else
+            ret = _secVirtualVideoPutExt (pPort, active_connector);
         if (ret != Success)
             goto put_still_fail;
     }
@@ -1859,7 +1886,7 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
                 goto put_still_fail;
             }
 
-            ret = _secVirtualVideoPutExt (pPort);
+            ret = _secVirtualVideoPutExt (pPort, active_connector);
             if (ret != Success)
                 goto put_still_fail;
             break;

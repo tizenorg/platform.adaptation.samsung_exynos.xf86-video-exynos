@@ -260,7 +260,7 @@ static ExaOpInfo* _swPrepareAccess (PixmapPtr pPix, int index)
     tbm_bo *bos;
     tbm_bo_handle bo_handle;
     SECFbBoDataPtr bo_data;
-    int num_bo;
+    int num_bo = 0;
     int ret;
 
     XDBG_RETURN_VAL_IF_FAIL ((privPixmap != NULL), NULL);
@@ -312,6 +312,16 @@ static ExaOpInfo* _swPrepareAccess (PixmapPtr pPix, int index)
         }
         else
         {
+
+#ifdef NO_CRTC_MODE
+            if (num_bo == 0)
+            {
+                num_bo = 1;
+                bos = (tbm_bo *)calloc(1, sizeof(tbm_bo *));
+                bos[0] = pSec->pFb->default_bo;
+            }
+#endif //NO_CRTC_MODE
+
             op->num = num_bo;
             op->isSame = 0;
 
