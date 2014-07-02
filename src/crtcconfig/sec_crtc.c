@@ -61,6 +61,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_accel.h"
 #include "sec_drm_ipp.h"
 #include "fimg2d.h"
+#include "xf86RandR12.h"
 
 static void _cursorRegisterBlockHandler (xf86CrtcPtr pCrtc);
 static void _cursorUnregisterBlockHandler (xf86CrtcPtr pCrtc);
@@ -91,6 +92,8 @@ _overlayEnsureBuffer (xf86CrtcPtr pCrtc, Bool move_layer)
 {
     SECModePtr pSecMode = (SECModePtr) SECPTR (pCrtc->scrn)->pSecMode;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     if (move_layer)
     {
@@ -125,6 +128,8 @@ static Bool
 _overlayEnsureLayer (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if ( pCrtcPriv == NULL)
+        return FALSE;
     int connector_type;
     SECLayerOutput output = LAYER_OUTPUT_LCD;
     SECLayer *layer;
@@ -166,6 +171,8 @@ static Bool
 _overlaySelectBuffer (xf86CrtcPtr pCrtc, Bool move_layer)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     SECModePtr pSecMode = (SECModePtr) SECPTR (pCrtc->scrn)->pSecMode;
 
     if (!_overlayEnsureLayer (pCrtc))
@@ -214,6 +221,8 @@ static Bool
 _cursorEnsureCursorImage(xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     SECPtr pSec = SECPTR (pCrtc->scrn);
 
     int x, y, cursor_x, cursor_y;
@@ -333,6 +342,8 @@ static Bool
 _cursorEnsureCanvas (xf86CrtcPtr pCrtc, SECVideoBuf *vbuf, int width, int height)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     tbm_bo_handle bo_handle;
 
     if (pCrtcPriv->ovl_canvas)
@@ -361,7 +372,8 @@ static Bool
 _cursorEnsureSavedImage (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
-
+    if (pCrtcPriv == NULL)
+        return FALSE;
     if (pCrtcPriv->saved_image)
         return TRUE;
 
@@ -379,6 +391,8 @@ static void
 _cursorSaveImage (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     SECModePtr pSecMode = (SECModePtr) SECPTR (pCrtc->scrn)->pSecMode;
 
     XDBG_RETURN_IF_FAIL (pCrtcPriv->move_layer == FALSE);
@@ -412,6 +426,8 @@ static void
 _cursorRestoreImage (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     if (!pCrtcPriv->saved_image || !pCrtcPriv->ovl_canvas)
         return;
@@ -436,6 +452,8 @@ static void
 _cursorDrawCursor (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     int x, y;
 
     XDBG_RETURN_IF_FAIL (pCrtcPriv->ovl_canvas != NULL);
@@ -479,6 +497,8 @@ _cursorReportDamage (DamagePtr pDamage, RegionPtr pRegion, void *closure)
 {
     xf86CrtcPtr pCrtc = (xf86CrtcPtr)closure;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     SECPtr pSec = SECPTR (pCrtc->scrn);
 
     if (pCrtcPriv->move_layer)
@@ -514,7 +534,8 @@ _cursorBlockHandler(pointer data, OSTimePtr pTimeout, pointer pRead)
     xf86CrtcPtr pCrtc = (xf86CrtcPtr)data;
     SECPtr pSec = SECPTR (pCrtc->scrn);
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
-
+    if (pCrtcPriv == NULL)
+        return;
     XDBG_RETURN_IF_FAIL (pCrtcPriv->move_layer == FALSE);
 
     if(pSec->ovl_drawable)
@@ -642,9 +663,15 @@ _cursorSetPointerDeviceRotate (DeviceIntPtr dev, int rotate)
 static Bool
 _cursorFindRelativeDevice (xf86CrtcPtr pCrtc)
 {
+    if (pCrtc == NULL)
+    {
+        return FALSE;
+    }
     InputInfoPtr localDevices;
     DeviceIntPtr dev;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     XDBG_TRACE (MCRS, "[%p]  \n", pCrtc);
 
@@ -664,6 +691,8 @@ _cursorRotateHook (CallbackListPtr *pcbl, pointer unused, pointer calldata)
 {
     ScrnInfoPtr pScrn = (ScrnInfoPtr) unused;
     xf86CrtcPtr pCrtc = xf86CompatCrtc (pScrn);
+    if (pCrtc == NULL)
+        return;
     XacePropertyAccessRec *rec = (XacePropertyAccessRec*)calldata;
     PropertyPtr pProp = *rec->ppProp;
     Atom name = pProp->propertyName;
@@ -699,6 +728,8 @@ static void
 _cursorRegisterBlockHandler (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     XDBG_RETURN_IF_FAIL (pCrtcPriv->move_layer == FALSE);
 
@@ -717,6 +748,8 @@ static void
 _cursorUnregisterBlockHandler (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     if (!pCrtcPriv->registered_block_handler)
         return;
@@ -733,6 +766,8 @@ static void
 _cursorMove (xf86CrtcPtr pCrtc, int x, int y)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     if (!pCrtcPriv->move_layer)
         return;
@@ -760,6 +795,8 @@ static void
 _cursorInit (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     XDBG_TRACE (MCRS, "[%p] \n", pCrtc);
 
@@ -772,6 +809,8 @@ static int
 _cursorDestroy (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     XDBG_TRACE (MCRS, "[%p]  \n", pCrtc);
 
@@ -809,6 +848,8 @@ static void
 _cursorShow (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     SECPtr pSec = SECPTR (pCrtc->scrn);
 
     if(!pSec->enableCursor)
@@ -849,6 +890,8 @@ static void
 _cursorHide (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     XDBG_TRACE (MCRS, "[%p] \n", pCrtc);
 
@@ -891,6 +934,8 @@ _cursorEnable (xf86CrtcPtr pCrtc, Bool enable)
 {
     ScrnInfoPtr pScrn = pCrtc->scrn;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     if (!pCrtcPriv->cursor_show)
         return FALSE;
@@ -951,6 +996,8 @@ _cursorRotate (xf86CrtcPtr pCrtc, int rotate)
 {
     SECPtr pSec = SECPTR (pCrtc->scrn);
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     if (pCrtcPriv->user_rotate == rotate)
         return TRUE;
@@ -1003,6 +1050,8 @@ static Bool
 _cursorChangeStatus (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     SECPtr pSec = SECPTR (pCrtc->scrn);
     int new_value;
 
@@ -1088,6 +1137,8 @@ _flipPixmapInit (xf86CrtcPtr pCrtc)
     ScrnInfoPtr pScrn = pCrtc->scrn;
     SECPtr pSec = SECPTR (pScrn);
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     int flip_backbufs = pSec->flip_bufs - 1;
     int i;
 
@@ -1105,6 +1156,8 @@ static void
 _flipPixmapDeinit (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     ScreenPtr pScreen = pCrtc->scrn->pScreen;
     int i;
 
@@ -1140,6 +1193,8 @@ _secCrtcGetFromPipe (ScrnInfoPtr pScrn, int pipe)
     {
         pCrtc = pXf86CrtcConfig->crtc[i];
         pCrtcPriv = pCrtc->driver_private;
+        if (pCrtcPriv == NULL)
+            continue;
         if (pCrtcPriv->pipe == pipe)
         {
             return pCrtc;
@@ -1164,6 +1219,10 @@ SECCrtcSetModeMajor(xf86CrtcPtr pCrtc, DisplayModePtr pMode,
     SECPtr pSec = SECPTR (pScrn);
     SECFbPtr pFb = pSec->pFb;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+    {
+        return TRUE;
+    }
     SECModePtr pSecMode = pCrtcPriv->pSecMode;
     tbm_bo bo = NULL, old_bo = NULL;
     tbm_bo bo_accessibility[2] = {0,}, old_bo_accessibility[2] = {0,};
@@ -1219,7 +1278,9 @@ SECCrtcSetModeMajor(xf86CrtcPtr pCrtc, DisplayModePtr pMode,
 
     ret = secCrtcApply(pCrtc);
     XDBG_GOTO_IF_FAIL (ret == TRUE, fail);
-
+#ifdef NO_CRTC_MODE
+    pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
+#endif
     /* set the default external mode */
     secDisplayModeToKmode (pCrtc->scrn, &pSecMode->ext_connector_mode, pMode);
 
@@ -1277,6 +1338,10 @@ static void
 SECCrtcSetCursorPosition (xf86CrtcPtr pCrtc, int x, int y)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+    {
+        return;
+    }
     SECPtr pSec = SECPTR (pCrtc->scrn);
 
     pCrtcPriv->cursor_pos_x = x;
@@ -1319,6 +1384,11 @@ SECCrtcShowCursor (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
 
+    if (pCrtcPriv == NULL)
+    {
+        return;
+    }
+
     XDBG_TRACE (MCRS, "[%p] cursor_show(%d)\n", pCrtc, pCrtcPriv->cursor_show);
 
     if(pCrtcPriv->cursor_show)
@@ -1333,6 +1403,11 @@ static void
 SECCrtcHideCursor (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+
+    if (pCrtcPriv == NULL)
+    {
+        return;
+    }
 
     XDBG_TRACE (MCRS, "[%p] cursor_show(%d)\n", pCrtc, pCrtcPriv->cursor_show);
 
@@ -1352,6 +1427,11 @@ static void
 SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+
+    if (pCrtcPriv == NULL)
+    {
+        return;
+    }
 
     if (image == NULL)
 #ifdef LATEST_XORG
@@ -1521,6 +1601,10 @@ SECCrtcGammaSet(xf86CrtcPtr pCrtc,
                 CARD16 *red, CARD16 *green, CARD16 *blue, int size)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+    {
+        return;
+    }
     SECModePtr pSecMode = pCrtcPriv->pSecMode;
 
     drmModeCrtcSetGamma(pSecMode->fd, secCrtcID(pCrtcPriv),
@@ -1531,7 +1615,10 @@ static void
 SECCrtcDestroy(xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
-
+    if (pCrtcPriv == NULL)
+    {
+        return;
+    }
     DRI2FrameEventPtr event_ref=NULL, event_next=NULL;
     xorg_list_for_each_entry_safe (event_ref, event_next, &pCrtcPriv->pending_flips, crtc_pending_link)
     {
@@ -1640,7 +1727,15 @@ static const xf86CrtcFuncsRec sec_crtc_funcs =
     .gamma_set = SECCrtcGammaSet,
     .destroy = SECCrtcDestroy,
 };
-
+#ifdef NO_CRTC_MODE
+xf86CrtcPtr
+secCrtcDummyInit (ScrnInfoPtr pScrn)
+{
+    xf86CrtcPtr pCrtc = NULL;
+    pCrtc = xf86CrtcCreate (pScrn, &sec_crtc_funcs);
+    return pCrtc;
+}
+#endif //NO_CRTC_MODE
 void
 secCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
 {
@@ -1692,6 +1787,9 @@ secCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
     _flipPixmapInit (pCrtc);
 
     xorg_list_add(&(pCrtcPriv->link), &(pSecMode->crtcs));
+#ifdef NO_CRTC_MODE
+    pSecMode->num_real_crtc++;
+#endif
 }
 
 /* check the crtc is on */
@@ -1722,6 +1820,8 @@ secCrtcApply(xf86CrtcPtr pCrtc)
 {
     ScrnInfoPtr pScrn = pCrtc->scrn;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     SECModePtr pSecMode = pCrtcPriv->pSecMode;
     xf86CrtcConfigPtr   xf86_config = XF86_CRTC_CONFIG_PTR (pCrtc->scrn);
     uint32_t *output_ids;
@@ -1744,14 +1844,23 @@ secCrtcApply(xf86CrtcPtr pCrtc)
             continue;
 
         pOutputPriv = pOutput->driver_private;
+        if (pOutputPriv == NULL)
+        {
+            continue;
+        }
 
         /* modify the physical size of monitor */
+#if 0
         if (!strcmp(pOutput->name, "LVDS1"))
+#endif
         {
             pOutput->mm_width = pOutputPriv->mode_output->mmWidth;
             pOutput->mm_height = pOutputPriv->mode_output->mmHeight;
-            pOutput->conf_monitor->mon_width = pOutputPriv->mode_output->mmWidth;
-            pOutput->conf_monitor->mon_height = pOutputPriv->mode_output->mmHeight;
+            if (pOutput->conf_monitor)
+            {
+                pOutput->conf_monitor->mon_width = pOutputPriv->mode_output->mmWidth;
+                pOutput->conf_monitor->mon_height = pOutputPriv->mode_output->mmHeight;
+            }
         }
 
         output_ids[output_count] = pOutputPriv->mode_output->connector_id;
@@ -1830,6 +1939,9 @@ secCrtcApply(xf86CrtcPtr pCrtc)
                 continue;
 
             pOutputPriv = pOutput->driver_private;
+#if 1
+        memcpy (&pSecMode->main_lcd_mode, pOutputPriv->mode_output->modes, sizeof(drmModeModeInfo));
+#endif
 
             /* TODO :: soolim :: check this out */
             secOutputDpmsSet(pOutput, DPMSModeOn);
@@ -1972,7 +2084,12 @@ secCrtcGetConnectType (xf86CrtcPtr pCrtc)
         SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
 
         if (pOutput->crtc == pCrtc)
-            return pOutputPriv->mode_output->connector_type;
+        {
+            if (pOutputPriv != NULL)
+                return pOutputPriv->mode_output->connector_type;
+            else
+                return DRM_MODE_CONNECTOR_Unknown;
+        }
     }
 
     return DRM_MODE_CONNECTOR_Unknown;
@@ -1985,6 +2102,8 @@ secCrtcIsFlipping (xf86CrtcPtr pCrtc)
 
     XDBG_RETURN_VAL_IF_FAIL (pCrtc != NULL, FALSE);
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     /* if isFlipping is true, return true */
     if (pCrtcPriv->is_flipping)
@@ -2006,6 +2125,8 @@ secCrtcGetPendingFlip (xf86CrtcPtr pCrtc, DRI2FrameEventPtr pEvent)
 
     XDBG_RETURN_VAL_IF_FAIL (pCrtc != NULL, NULL);
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return NULL;
 
     if (xorg_list_is_empty (&pCrtcPriv->pending_flips))
         return NULL;
@@ -2030,6 +2151,8 @@ secCrtcGetFirstPendingFlip (xf86CrtcPtr pCrtc)
 
     XDBG_RETURN_VAL_IF_FAIL (pCrtc != NULL, NULL);
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return NULL;
 
     if (xorg_list_is_empty (&pCrtcPriv->pending_flips))
         return NULL;
@@ -2055,6 +2178,8 @@ secCrtcAddPendingFlip (xf86CrtcPtr pCrtc, DRI2FrameEventPtr pEvent)
     XDBG_RETURN_IF_FAIL (pCrtc != NULL);
 
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     xorg_list_add(&(pEvent->crtc_pending_link), &(pCrtcPriv->pending_flips));
 }
@@ -2068,6 +2193,8 @@ secCrtcRemovePendingFlip (xf86CrtcPtr pCrtc, DRI2FrameEventPtr pEvent)
     XDBG_RETURN_IF_FAIL (pCrtc != NULL);
 
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     if (xorg_list_is_empty (&pCrtcPriv->pending_flips))
         return;
@@ -2095,6 +2222,8 @@ _secCrtcExecAccessibilityScaleNegative (xf86CrtcPtr pCrtc, tbm_bo src_bo, tbm_bo
     }
 
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     XDBG_RETURN_VAL_IF_FAIL(src_bo != NULL, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_bo != NULL, FALSE);
@@ -2177,6 +2306,8 @@ _secCrtcExecRotate (xf86CrtcPtr pCrtc, tbm_bo src_bo, tbm_bo dst_bo)
     XDBG_RETURN_VAL_IF_FAIL(pCrtc != NULL, FALSE);
 
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     XDBG_RETURN_VAL_IF_FAIL(pCrtcPriv->screen_rotate_prop_id > 0, FALSE);
 
     pSec = SECPTR(pCrtc->scrn);
@@ -2234,6 +2365,8 @@ Bool
 secCrtcExecAccessibility (xf86CrtcPtr pCrtc, tbm_bo src_bo, tbm_bo dst_bo)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     Bool ret = FALSE;
     CARD32 elapsed = 0;
     SECPtr pSec = SECPTR(pCrtc->scrn);
@@ -2267,6 +2400,8 @@ secCrtcEnableAccessibility (xf86CrtcPtr pCrtc)
 
     ScrnInfoPtr pScrn = pCrtc->scrn;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     /* accessibility and screen rotate can't be enable at the same time */
     XDBG_RETURN_VAL_IF_FAIL (pCrtcPriv->screen_rotate_degree == 0, FALSE);
@@ -2376,11 +2511,12 @@ secCrtcEnableAccessibility (xf86CrtcPtr pCrtc)
 Bool
 secCrtcEnableScreenRotate (xf86CrtcPtr pCrtc, Bool enable)
 {
-#ifdef _F_WEARABLE_FEATURE_
     XDBG_RETURN_VAL_IF_FAIL (pCrtc != NULL, FALSE);
 
     ScrnInfoPtr pScrn = pCrtc->scrn;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     int width = pCrtc->mode.HDisplay;
     int height = pCrtc->mode.VDisplay;
     int degree = pCrtcPriv->screen_rotate_degree;
@@ -2479,6 +2615,8 @@ secCrtcScreenRotate (xf86CrtcPtr pCrtc, int degree)
     ScrnInfoPtr pScrn = pCrtc->scrn;
     SECPtr pSec = SECPTR(pCrtc->scrn);
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     CARD32 elapsed[3] = {0,};
 
     if (pCrtcPriv->screen_rotate_degree == degree)
@@ -2535,6 +2673,8 @@ secCrtcTurn (xf86CrtcPtr pCrtc, Bool onoff, Bool always, Bool user)
 {
     SECModePtr pSecMode = SECPTR (pCrtc->scrn)->pSecMode;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
     int crtc_id = secCrtcID(pCrtcPriv);
     int mode;
 
@@ -2576,6 +2716,8 @@ Bool
 secCrtcCheckOn (xf86CrtcPtr pCrtc)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     return pCrtcPriv->onoff;
 }
@@ -2592,6 +2734,9 @@ secCrtcFullFreeFlipPixmap (ScrnInfoPtr pScrn, int crtc_pipe)
     XDBG_RETURN_VAL_IF_FAIL(pCrtc != NULL, FALSE);
 
     pCrtcPriv = pCrtc->driver_private;
+
+    if (pCrtcPriv == NULL)
+        return FALSE;
 
     /* there is a free flip pixmap, return false */
     for (i = 0; i < pCrtcPriv->flip_backpixs.num; i++)
@@ -2622,6 +2767,9 @@ secCrtcGetFreeFlipPixmap (ScrnInfoPtr pScrn, int crtc_pipe, DrawablePtr pDraw, u
     XDBG_RETURN_VAL_IF_FAIL(pCrtc != NULL, FALSE);
 
     pCrtcPriv = pCrtc->driver_private;
+
+    if (pCrtcPriv == NULL)
+        return NULL;
 
     /* check if there is free flip pixmaps */
     if (secCrtcFullFreeFlipPixmap(pScrn, crtc_pipe))
@@ -2704,6 +2852,9 @@ secCrtcRelFlipPixmap (ScrnInfoPtr pScrn, int crtc_pipe, PixmapPtr pPixmap)
 
     pCrtcPriv = pCrtc->driver_private;
 
+    if (pCrtcPriv == NULL)
+        return;
+
     /* release flip pixmap */
     for (i = 0; i < pCrtcPriv->flip_backpixs.num; i++)
     {
@@ -2730,6 +2881,8 @@ secCrtcRelAllFlipPixmap (ScrnInfoPtr pScrn, int crtc_pipe)
     XDBG_RETURN_IF_FAIL(pCrtc != NULL);
 
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
 
     /* release flip pixmap */
     for (i = 0; i < pCrtcPriv->flip_backpixs.num; i++)
@@ -2759,7 +2912,32 @@ secCrtcCountFps(xf86CrtcPtr pCrtc)
         return;
 
     pCrtcPriv = pCrtc->driver_private;
+    if (pCrtcPriv == NULL)
+        return;
     conn_type = secCrtcGetConnectType (pCrtc);
 
     xDbgLogFpsDebugCount (pCrtcPriv->pFpsDebug, conn_type);
 }
+#ifdef NO_CRTC_MODE
+Bool
+secCrtcCheckInUseAll(ScrnInfoPtr pScrn)
+{
+    xf86CrtcConfigPtr config = XF86_CRTC_CONFIG_PTR(pScrn);
+    int i;
+    Bool ret = FALSE;
+    if (config == NULL)
+        return ret;
+    for (i = 0; i < config->num_crtc; i++)
+    {
+        xf86CrtcPtr pCrtc = config->crtc[i];
+        if (xf86CrtcInUse(pCrtc))
+        {
+            ret = TRUE;
+            break;
+        }
+    }
+    xf86DrvMsg (pScrn->scrnIndex, X_INFO ,
+                "%s found active CRTC\n", ret?"":"NOT");
+    return ret;
+}
+#endif //NO_CRTC_MODE

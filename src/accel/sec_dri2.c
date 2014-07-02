@@ -171,7 +171,9 @@ _initBackBufPixmap (DRI2BufferPtr pBackBuf, DrawablePtr pDraw, Bool canFlip)
         {
             /* pipe is -1 */
             canFlip = FALSE;
-            XDBG_WARNING(MDRI2, "pipe is -1");
+#ifndef NO_CRTC_MODE
+            XDBG_WARNING(MDRI2, "pipe is -1\n");
+#endif
         }
     }
 
@@ -1391,6 +1393,16 @@ SECDri2ScheduleSwapWithRegion (ClientPtr pClient, DrawablePtr pDraw,
         (pSec->dump_xid == 0 || pSec->dump_xid == pDraw->id))
         _saveDrawable (pDraw, pBackBuf, swap_type);
 
+#ifdef NO_CRTC_MODE
+    if (pSec->isCrtcOn == FALSE)
+    {
+        _asyncSwapBuffers (pClient, pDraw, pFrameEvent);
+        _SendSyncDrawDoneMessage(pScreen, pClient, pDraw);
+        _deleteFrame (pDraw, pFrameEvent);
+        return TRUE;
+    }
+    else
+#endif //NO_CRTC_MODE
     /* If lcd is off status, SwapBuffers do not consider the vblank sync.
      * The client that launches after lcd is off wants to render the frame
      * on the fly.

@@ -52,8 +52,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_xberc.h"
 #include "sec_util.h"
 #include "sec_wb.h"
+#include "sec_crtc.h"
 #include <tbm_bufmgr.h>
 #include "fimg2d.h"
+#include "sec_output.h"
 
 #define OPTION_FLIP_BUFFERS 0
 
@@ -409,6 +411,8 @@ _secHwInit (ScrnInfoPtr pScrn, struct pci_device *pPci, char *device)
     else
         xf86DrvMsg (pScrn->scrnIndex, X_CONFIG
                     , "G2D is disabled\n");
+    /*** Temporary disable G2D acceleration for using PIXMAN ***/
+    pSec->is_accel_2d = FALSE;
 
     return TRUE;
 }
@@ -668,7 +672,11 @@ SECUdevEventsHandler (int fd, void *closure)
             hotplug && atoi(hotplug) == 1)
     {
         XDBG_INFO(MSEC, "SEC-UDEV: HotPlug\n");
-        RRGetInfo (screenInfo.screens[pScrn->scrnIndex], TRUE);
+        RRGetInfo (xf86ScrnToScreen(pScrn), TRUE);
+#ifdef NO_CRTC_MODE
+        secOutputDrmUpdate (pScrn);
+        secDisplayChangeMode(pScrn);
+#endif
     }
 
     udev_device_unref(dev);
@@ -849,8 +857,17 @@ SECPreInit (ScrnInfoPtr pScrn, int flags)
                     "fail to set the gamma\n");
         goto bail1;
     }
-
+#ifdef NO_CRTC_MODE
+    if (pScrn->modes == NULL)
+    {
+        pScrn->modes = xf86ModesAdd(pScrn->modes,
+                                    xf86CVTMode(pScrn->virtualX,
+                                                pScrn->virtualY,
+                                                60, 0, 0));
+    }
+#endif
     pScrn->currentMode = pScrn->modes;
+
     pScrn->displayWidth = pScrn->virtualX;
     xf86PrintModes (pScrn); /* just print the current mode */
 
@@ -1083,7 +1100,9 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
 #if USE_XDBG
     xDbgLogPListInit (pScreen);
 #endif
-
+#ifdef NO_CRTC_MODE
+    pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
+#endif
     XDBG_KLOG(MSEC, "Init Screen\n");
     return TRUE;
 }
