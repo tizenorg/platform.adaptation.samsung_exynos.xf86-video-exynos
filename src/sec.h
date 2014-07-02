@@ -127,7 +127,9 @@ typedef struct
     SECVideoPrivPtr pVideoPriv;
 
     Bool isLcdOff; /* lvds connector on/off status */
-
+#ifdef NO_CRTC_MODE
+    Bool isCrtcOn; /* Global crtc status */
+#endif
     /* screen wrapper functions */
     CloseScreenProcPtr CloseScreen;
     CreateScreenResourcesProcPtr CreateScreenResources;
