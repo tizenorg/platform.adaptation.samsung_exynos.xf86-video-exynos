@@ -103,7 +103,11 @@ typedef struct _secDrmMode
     struct xorg_list outputs;
     struct xorg_list crtcs;
     struct xorg_list planes;
-
+#ifdef NO_CRTC_MODE
+    int num_dummy_output;
+    int num_real_output;
+    int num_real_crtc;
+#endif
     SECDisplaySetMode  set_mode;
     SECDisplayConnMode conn_mode;
     int                rotate;
@@ -178,6 +182,8 @@ int secDisplayDrawablePipe (DrawablePtr pDraw);
 int secDisplayCrtcPipe (ScrnInfoPtr pScrn, int crtc_id);
 
 Bool secDisplayUpdateRequest(ScrnInfoPtr pScrn);
-
+#ifdef NO_CRTC_MODE
+Bool secDisplayChangeMode (ScrnInfoPtr pScrn);
+#endif
 #endif /* __SEC_DISPLAY_H__ */
 

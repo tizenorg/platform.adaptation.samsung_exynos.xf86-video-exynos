@@ -302,6 +302,11 @@ _secLayerWatchVblank (SECLayer *layer)
     SECPtr pSec = SECPTR (layer->pScrn);
 
     /* if lcd is off, do not request vblank information */
+#ifdef NO_CRTC_MODE
+    if (pSec->isCrtcOn == FALSE)
+        return;
+    else
+#endif //NO_CRTC_MODE
     if (pSec->isLcdOff)
         return;
 
@@ -704,6 +709,8 @@ secLayerUpdate (SECLayer *layer)
     {
         xf86CrtcPtr pCrtc = pCrtcConfig->crtc[c];
         SECCrtcPrivPtr pTemp =  pCrtc->driver_private;
+        if (pTemp == NULL)
+            continue;
         if (pTemp->mode_crtc && pTemp->mode_crtc->crtc_id == layer->crtc_id)
         {
             pCrtcPriv = pTemp;
