@@ -45,7 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_util.h"
 #include "sec_output.h"
 #include "sec_video_fourcc.h"
-#include <exynos_drm.h>
+#include "common.h"
 #include <list.h>
 
 #include "fimg2d.h"

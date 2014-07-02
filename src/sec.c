@@ -40,7 +40,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "fb.h"
 #include "mipointer.h"
-#include "mibstore.h"
 #include "micmap.h"
 #include "colormapst.h"
 #include "xf86cmap.h"
@@ -1017,7 +1016,6 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
                     "XVideo extention initialization failed\n");
 
     xf86SetBlackWhitePixels (pScreen);
-    miInitializeBackingStore (pScreen);
     xf86SetBackingStore (pScreen);
 
     /* use dummy hw_cursro instead of sw_cursor */

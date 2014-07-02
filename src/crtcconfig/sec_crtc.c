@@ -52,7 +52,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <list.h>
 #include <X11/Xatom.h>
 #include <X11/extensions/dpmsconst.h>
-#include <exynos_drm.h>
 #include "sec.h"
 #include "sec_util.h"
 #include "sec_crtc.h"
@@ -1345,13 +1344,21 @@ SECCrtcHideCursor (xf86CrtcPtr pCrtc)
     _cursorHide (pCrtc);
 }
 
+#ifdef LATEST_XORG
+static Bool
+#else
 static void
+#endif
 SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
 
     if (image == NULL)
-        return;
+#ifdef LATEST_XORG
+        return FALSE;
+#else
+    	return;
+#endif
 
     XDBG_TRACE (MCRS, "[%p] image(%p) \n", pCrtc, image);
 
@@ -1363,7 +1370,12 @@ SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
                                      , NULL
                                      , 0);
 
+#ifdef LATEST_XORG
+    XDBG_RETURN_VAL_IF_FAIL (pCrtcPriv->backup_image != NULL, FALSE);
+#else
     XDBG_RETURN_IF_FAIL (pCrtcPriv->backup_image != NULL);
+#endif
+
 
     memcpy (pixman_image_get_data(pCrtcPriv->backup_image), image, SEC_CURSOR_W * SEC_CURSOR_H * 4);
 
@@ -1374,6 +1386,9 @@ SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
     }
 
     pCrtcPriv->need_cursor_update = TRUE;
+#ifdef LATEST_XORG
+    return TRUE;
+#endif
 }
 
 

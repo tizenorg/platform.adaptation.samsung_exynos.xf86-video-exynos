@@ -48,7 +48,7 @@
 #include <xace.h>
 #include <xacestr.h>
 
-#include "exynos_drm.h"
+#include "common.h"
 
 #include "sec.h"
 #include "sec_util.h"

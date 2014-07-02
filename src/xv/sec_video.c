@@ -70,7 +70,7 @@
 
 #include "xv_types.h"
 
-#include <exynos_drm.h>
+#include "common.h"
 
 #define DONT_FILL_ALPHA     -1
 #define SEC_MAX_PORT        16

@@ -35,7 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fbdevhw.h>
 #include <X11/Xdefs.h>
 #include <tbm_bufmgr.h>
-#include <exynos_drm.h>
+#include "common.h"
 
 /* securezone memory */
 #define TZMEM_IOC_GET_TZMEM 0xC00C5402

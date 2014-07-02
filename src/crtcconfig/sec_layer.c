@@ -47,7 +47,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_video_tvout.h"
 #include "sec_video_virtual.h"
 
-#include <exynos_drm.h>
+#include "common.h"
 
 //#define DEBUG_REFCNT
 

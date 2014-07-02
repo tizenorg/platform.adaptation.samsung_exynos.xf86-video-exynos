@@ -7,7 +7,7 @@
 
 #include "xf86drm.h"
 #include "xf86drmMode.h"
-#include "exynos_drm.h"
+#include "common.h"
 #include "fimg2d.h"
 #include "sec_util.h"
 

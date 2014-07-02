@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_crtc.h"
 #include "sec_prop.h"
 #include "sec_util.h"
-#include <exynos_drm.h>
+#include "common.h"
 #include <sys/ioctl.h>
 
 #define STR_XRR_DISPLAY_MODE_PROPERTY "XRR_PROPERTY_DISPLAY_MODE"

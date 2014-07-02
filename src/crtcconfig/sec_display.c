@@ -56,7 +56,7 @@
 #include "sec_util.h"
 #include "sec_xberc.h"
 
-#include <exynos_drm.h>
+#include "common.h"
 
 static Bool SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height);
 static void SECModeVblankHandler(int fd, unsigned int frame, unsigned int tv_sec,
