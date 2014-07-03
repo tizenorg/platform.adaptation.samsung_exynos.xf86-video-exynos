@@ -32,6 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "config.h"
 #endif
 
+#define _F_WEARABLE_FEATURE_ 1
+
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -1797,10 +1797,14 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
         if (pXf86CrtcConfig->output[i]->status == XF86OutputStatusConnected)
         {
             pOutput = pXf86CrtcConfig->output[i];
-            if (!strcmp(pOutput->name, "HDMI1"))
+            if (!strcmp(pOutput->name, "LVDS1"))
+            {
+                active_connector = DRM_MODE_CONNECTOR_LVDS;
+                break;
+            }else if (!strcmp(pOutput->name, "HDMI1"))
             {
                 active_connector = DRM_MODE_CONNECTOR_HDMIA;
-            } else if (!strcmp(pOutput->name, "Virtual1"))
+            }else if (!strcmp(pOutput->name, "Virtual1"))
             {
                 active_connector = DRM_MODE_CONNECTOR_VIRTUAL;
             }

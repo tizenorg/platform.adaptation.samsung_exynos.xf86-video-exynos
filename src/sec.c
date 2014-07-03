@@ -1104,7 +1104,7 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
 #ifdef NO_CRTC_MODE
     pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
 #endif
-    XDBG_KLOG(MSEC, "Init Screen\n");
+    XDBG_KLOG(MSEC, "Init Screen Sneakers Driver\n");
     return TRUE;
 }
 
