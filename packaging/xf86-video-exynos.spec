@@ -43,6 +43,7 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/usr/share/license
 cp -af COPYING %{buildroot}/usr/share/license/%{name}
 %make_install
+rm -rf %{buildroot}/usr/share/man
 
 %files
 %defattr(-,root,root,-)
