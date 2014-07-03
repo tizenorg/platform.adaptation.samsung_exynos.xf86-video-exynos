@@ -694,7 +694,9 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
     /* set the hidden properties : features for sec debugging*/
     /* TODO : xberc can works on only LVDS????? */
 #ifdef NO_CRTC_MODE
-        if ((pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA) || (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL))
+        if ((pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA) ||
+            (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL) ||
+            (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS))
 #else
         if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS)
 #endif
@@ -715,7 +717,7 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
             return TRUE;
     }
     /* set the hidden properties : features for driver specific funtions */
-#ifndef NO_CRTC_MODE
+
     if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
         pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIB ||
         pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL)
@@ -724,7 +726,7 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
         if (secPropSetDisplayMode(output, property, value))
             return TRUE;
     }
-#endif
+
     return TRUE;
 }
 
