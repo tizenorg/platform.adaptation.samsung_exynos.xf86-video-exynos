@@ -1863,8 +1863,10 @@ secCrtcApply(xf86CrtcPtr pCrtc)
         output_count++;
     }
 
+#if 0
     if (!xf86CrtcRotate (pCrtc))
         goto done;
+#endif
 
     pCrtc->funcs->gamma_set (pCrtc, pCrtc->gamma_red, pCrtc->gamma_green,
                              pCrtc->gamma_blue, pCrtc->gamma_size);
@@ -1983,7 +1985,9 @@ secCrtcApply(xf86CrtcPtr pCrtc)
     if (pScrn->pScreen)
         xf86_reload_cursors (pScrn->pScreen);
 
+#if 0
 done:
+#endif
     free (output_ids);
     return ret;
 }
