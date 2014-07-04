@@ -261,13 +261,12 @@ SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height)
                width, height);
 #ifdef NO_CRTC_MODE
     pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
-#else
+#endif
     if (pScrn->virtualX == width &&
         pScrn->virtualY == height)
     {
         return TRUE;
     }
-#endif
     secFbResize(pSec->pFb, width, height);
 
     /* set  the new size of pScrn */
