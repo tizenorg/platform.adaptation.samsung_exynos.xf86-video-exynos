@@ -1723,7 +1723,7 @@ static const xf86CrtcFuncsRec sec_crtc_funcs =
     .gamma_set = SECCrtcGammaSet,
     .destroy = SECCrtcDestroy,
 };
-#ifdef NO_CRTC_MODE
+#if 0
 xf86CrtcPtr
 secCrtcDummyInit (ScrnInfoPtr pScrn)
 {
@@ -1862,12 +1862,10 @@ secCrtcApply(xf86CrtcPtr pCrtc)
         output_ids[output_count] = pOutputPriv->mode_output->connector_id;
         output_count++;
     }
-
 #if 0
     if (!xf86CrtcRotate (pCrtc))
         goto done;
 #endif
-
     pCrtc->funcs->gamma_set (pCrtc, pCrtc->gamma_red, pCrtc->gamma_green,
                              pCrtc->gamma_blue, pCrtc->gamma_size);
 
@@ -1912,10 +1910,12 @@ secCrtcApply(xf86CrtcPtr pCrtc)
     /* for cache control */
     tbm_bo_map (bo, TBM_DEVICE_2D, TBM_OPTION_READ);
     tbm_bo_unmap (bo);
-
-    ret = drmModeSetCrtc(pSecMode->fd, secCrtcID(pCrtcPriv),
+    if (pCrtcPriv->is_dummy == FALSE)
+        ret = drmModeSetCrtc(pSecMode->fd, secCrtcID(pCrtcPriv),
                          fb_id, x, y, output_ids, output_count,
                          &pCrtcPriv->kmode);
+    else
+        ret = 0;
     if (ret)
     {
         XDBG_INFO (MDISP, "failed to set mode: %s\n", strerror (-ret));
@@ -1946,9 +1946,12 @@ secCrtcApply(xf86CrtcPtr pCrtc)
             pOutputPriv->dpms_mode = DPMSModeOn;
 
             /* update mode_encoder */
-            drmModeFreeEncoder (pOutputPriv->mode_encoder);
-            pOutputPriv->mode_encoder =
-                drmModeGetEncoder (pSecMode->fd, pOutputPriv->mode_output->encoders[0]);
+            if (pOutputPriv->is_dummy == FALSE)
+            {
+                drmModeFreeEncoder (pOutputPriv->mode_encoder);
+                pOutputPriv->mode_encoder =
+                    drmModeGetEncoder (pSecMode->fd, pOutputPriv->mode_output->encoders[0]);
+            }
 
             /* set display connector and display set mode */
             if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
@@ -1981,10 +1984,10 @@ secCrtcApply(xf86CrtcPtr pCrtc)
     }
 
     secOutputDrmUpdate (pScrn);
-
+#if 0
     if (pScrn->pScreen)
         xf86_reload_cursors (pScrn->pScreen);
-
+#endif
 #if 0
 done:
 #endif

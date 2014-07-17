@@ -193,7 +193,7 @@ SECOutputDetect(xf86OutputPtr pOutput)
 
     if (pOutputPriv == NULL)
     {
-#ifdef NO_CRTC_MODE
+#if 0
         if (pOutput->randr_output && pOutput->randr_output->numUserModes)
         {
             xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pOutput->scrn);
@@ -377,7 +377,8 @@ SECOutputDpms(xf86OutputPtr pOutput, int dpms)
     int i;
 
     if (!strcmp(pOutput->name, "HDMI1") ||
-        !strcmp(pOutput->name, "Virtual1"))
+        !strcmp(pOutput->name, "Virtual1") ||
+        !strcmp(pOutput->name, "DUMMY1"))
             return;
 
     if (dpms == DPMSModeSuspend)
@@ -766,7 +767,9 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
     SECModePtr pSecMode = pSec->pSecMode;
     Bool ret = TRUE;
     int i;
-
+#if 1
+    return TRUE;
+#endif
     for (i = 0; i < pSecMode->mode_res->count_connectors; i++)
     {
 #ifdef NO_CRTC_MODE
@@ -871,7 +874,7 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
         xf86DrvMsg (pScrn->scrnIndex, X_ERROR, "drm(output) update error. (%s)\n", strerror (errno));
     return ret;
 }
-#ifdef NO_CRTC_MODE
+#if 0
 Bool
 secOutputDummyInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, Bool late)
 {

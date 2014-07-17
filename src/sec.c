@@ -1040,7 +1040,7 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
     miDCInitialize (pScreen, xf86GetPointerScreenFuncs());
     xf86DrvMsg (pScrn->scrnIndex, X_INFO
                 , "Initializing HW Cursor\n");
-
+#if 0
     if (!xf86_cursors_init (pScreen, SEC_CURSOR_W, SEC_CURSOR_H,
                             (HARDWARE_CURSOR_TRUECOLOR_AT_8BPP |
                              HARDWARE_CURSOR_BIT_ORDER_MSBFIRST |
@@ -1053,7 +1053,7 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
         xf86DrvMsg (pScrn->scrnIndex, X_ERROR
                     , "Hardware cursor initialization failed\n");
     }
-
+#endif
     /* crtc init */
     if (!xf86CrtcScreenInit (pScreen))
         return FALSE;

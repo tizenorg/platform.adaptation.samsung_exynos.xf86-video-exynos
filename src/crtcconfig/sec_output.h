@@ -56,9 +56,10 @@ typedef struct _secOutputPriv
     int disp_mode;
 
     xf86OutputPtr pOutput;
+    Bool is_dummy;
     struct xorg_list link;
 } SECOutputPrivRec, *SECOutputPrivPtr;
-#ifdef NO_CRTC_MODE
+#if 0
 Bool    secOutputDummyInit  (ScrnInfoPtr pScrn, SECModePtr pSecMode, Bool late);
 #endif
 void    secOutputInit       (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num);

@@ -107,6 +107,7 @@ typedef struct _secDrmMode
     int num_dummy_output;
     int num_real_output;
     int num_real_crtc;
+    int num_dummy_crtc;
 #endif
     SECDisplaySetMode  set_mode;
     SECDisplayConnMode conn_mode;
