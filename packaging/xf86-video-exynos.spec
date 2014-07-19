@@ -1,8 +1,9 @@
+%bcond_with x
+
 Name:       xf86-video-exynos
 Summary:    X.Org X server driver for exynos
 Version:    1.0.0
 Release:    1
-ExclusiveArch:  %arm
 Group:      System/X Hardware Support
 License:    Samsung
 Source0:    %{name}-%{version}.tar.gz
@@ -20,6 +21,12 @@ BuildRequires:  pkgconfig(libudev)
 BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(xdbg)
 BuildRequires:  pkgconfig(libdrm)
+
+%if !%{with x}
+ExclusiveArch:
+%else
+ExclusiveArch: %arm
+%endif
 
 %description
 This package provides the driver for the Samsung display device exynos
