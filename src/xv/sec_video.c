@@ -511,6 +511,26 @@ _secVideoGetTvoutMode (SECPortPrivPtr pPort)
         output = OUTPUT_LCD;
     }
 
+    /* OUTPUT_LCD is default display. If default display is HDMI,
+     * we need to change OUTPUT_LCD to OUTPUT_HDMI
+     */
+    if (output == OUTPUT_LCD)
+    {
+        xf86CrtcPtr pCrtc = secCrtcGetAtGeometry (pPort->pScrn,
+                      (int)pPort->d.pDraw->x, (int)pPort->d.pDraw->y,
+                      (int)pPort->d.pDraw->width, (int)pPort->d.pDraw->height);
+        int c = secCrtcGetConnectType (pCrtc);
+
+        if (c == DRM_MODE_CONNECTOR_LVDS || c == DRM_MODE_CONNECTOR_Unknown)
+            output = OUTPUT_LCD;
+        else if (c == DRM_MODE_CONNECTOR_HDMIA || c == DRM_MODE_CONNECTOR_HDMIB)
+            output = OUTPUT_EXT;
+        else if (c == DRM_MODE_CONNECTOR_VIRTUAL)
+            output = OUTPUT_EXT;
+        else
+            XDBG_NEVER_GET_HERE (MVDO);
+    }
+
     if (pPort->drawing == ON_PIXMAP)
         output = OUTPUT_LCD;
 
