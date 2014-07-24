@@ -1630,13 +1630,7 @@ _secVideoArrangeLayerPos (SECPortPrivPtr pPort, Bool by_notify)
     SECPortPrivPtr pCur = NULL, pNext = NULL;
     SECPortPrivPtr pAnother = NULL;
     int i = 0;
-#ifdef NO_CRTC_MODE
-/* Sorry This is temporary part */
-    secCrtcCursorEnable (pPort->pScrn, FALSE);
-    secLayerSetPos (pPort->layer, LAYER_UPPER);
-    return;
-/* ************************* */
-#endif
+
     xorg_list_for_each_entry_safe (pCur, pNext, &layer_owners, link)
     {
         if (pCur == pPort)
