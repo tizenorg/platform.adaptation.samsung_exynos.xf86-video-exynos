@@ -9,8 +9,8 @@
 #ifndef RR_Reflect_All
 #define RR_Reflect_All (RR_Reflect_X|RR_Reflect_Y)
 #endif //RR_Reflect_All
-
+#ifdef NO_CRTC_MODE
 Bool           secDummyOutputInit  (ScrnInfoPtr pScrn, SECModePtr pSecMode, Bool late);
 xf86CrtcPtr    secDummyCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode);
-
+#endif
 #endif // SEC_DUMMY_H
