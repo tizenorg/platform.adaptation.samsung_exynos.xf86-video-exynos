@@ -2255,7 +2255,7 @@ secVideoQueryImageAttrs (ScrnInfoPtr  pScrn,
             lengths[0] = size;
 
         if (pitches)
-            pitches[1] = *w >> 1;
+            pitches[1] = *w;
 
         tmp = (*w) * (*h >> 1);
         size += tmp;
