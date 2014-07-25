@@ -1754,6 +1754,7 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
 {
     ScrnInfoPtr pScrn = pPort->pScrn;
     SECModePtr pSecMode = (SECModePtr) SECPTR (pScrn)->pSecMode;
+    SECDisplaySetMode disp_mode = secDisplayGetDispSetMode (pScrn);
     xRectangle tv_rect = {0,};
     Bool first_put = FALSE;
 
@@ -1872,8 +1873,11 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
 
     if (!(output & OUTPUT_FULL))
     {
-        tv_rect.x = pPort->d.dst.x
-                    - pSecMode->main_lcd_mode.hdisplay;
+        if (disp_mode == DISPLAY_SET_MODE_EXT)
+            tv_rect.x = pPort->d.dst.x
+                        - pSecMode->main_lcd_mode.hdisplay;
+        else
+            tv_rect.x = pPort->d.dst.x;
         tv_rect.y = pPort->d.dst.y;
         tv_rect.width = pPort->d.dst.width;
         tv_rect.height = pPort->d.dst.height;
