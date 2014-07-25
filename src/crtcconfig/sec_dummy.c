@@ -97,6 +97,8 @@ SECDummyCrtcSetModeMajor(xf86CrtcPtr pCrtc, DisplayModePtr pMode,
     SECPtr pSec = SECPTR (pScrn);
     SECFbPtr pFb = pSec->pFb;
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
+    xf86CrtcConfigPtr   xf86_config = XF86_CRTC_CONFIG_PTR (pCrtc->scrn);
+    int i = 0;
     if (pCrtcPriv == NULL)
     {
         return TRUE;
@@ -107,7 +109,6 @@ SECDummyCrtcSetModeMajor(xf86CrtcPtr pCrtc, DisplayModePtr pMode,
     int saved_x, saved_y;
     Rotation saved_rotation;
     DisplayModeRec saved_mode;
-    Bool ret = FALSE;
 
     XDBG_DEBUG(MDOUT,
                "SetModeMajor pMode:%d cur(%dx%d+%d+%d),rot:%d new(%dx%d+%d+%d),refresh(%f)rot:%d\n",
@@ -153,28 +154,53 @@ SECDummyCrtcSetModeMajor(xf86CrtcPtr pCrtc, DisplayModePtr pMode,
     bo = secFbGetBo(pFb, x, y, pMode->HDisplay, pMode->VDisplay, FALSE);
     XDBG_GOTO_IF_FAIL (bo != NULL, fail);
     pCrtcPriv->front_bo = bo;
+    if (pCrtcPriv->bAccessibility || pCrtcPriv->screen_rotate_degree > 0)
+    {
+        tbm_bo temp;
+        bo = pCrtcPriv->accessibility_back_bo;
+        temp = pCrtcPriv->accessibility_front_bo;
+        pCrtcPriv->accessibility_front_bo = pCrtcPriv->accessibility_back_bo;
+        pCrtcPriv->accessibility_back_bo = temp;
+    }
 
-    ret = secCrtcApply(pCrtc);
-    XDBG_GOTO_IF_FAIL (ret == TRUE, fail);
+    /* turn off the crtc if the same crtc is set already by another display mode
+     * before the set crtcs
+     */
+    secDisplaySetDispSetMode(pScrn, DISPLAY_SET_MODE_OFF);
+
+    if (!pCrtcPriv->onoff)
+        secCrtcTurn (pCrtc, TRUE, FALSE, FALSE);
+
+    /* for cache control */
+    tbm_bo_map (bo, TBM_DEVICE_2D, TBM_OPTION_READ);
+    tbm_bo_unmap (bo);
+    for (i = 0; i < xf86_config->num_output; i++)
+    {
+        xf86OutputPtr pOutput = xf86_config->output[i];
+        SECOutputPrivPtr pOutputPriv;
+
+        if (pOutput->crtc != pCrtc)
+            continue;
+
+        pOutputPriv = pOutput->driver_private;
+
+#if 1
+        memcpy (&pSecMode->main_lcd_mode, pOutputPriv->mode_output->modes, sizeof(drmModeModeInfo));
+#endif
+
+        pOutputPriv->dpms_mode = DPMSModeOn;
+    }
+    secOutputDrmUpdate (pScrn);
+    if (pScrn->pScreen)
+        xf86_reload_cursors (pScrn->pScreen);
+
 #ifdef NO_CRTC_MODE
     pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
 #endif
     /* set the default external mode */
     secDisplayModeToKmode (pCrtc->scrn, &pSecMode->ext_connector_mode, pMode);
 
-   /* accessibility */
-    if (pCrtcPriv->bAccessibility || pCrtcPriv->screen_rotate_degree > 0)
-    {
-        if (ret)
-        {
-            if (old_bo_accessibility[0])
-                secRenderBoUnref (old_bo_accessibility[0]);
-            if (old_bo_accessibility[1])
-                secRenderBoUnref (old_bo_accessibility[1]);
-        }
-    }
-
-    return ret;
+    return TRUE;
 fail:
     XDBG_ERROR(MDOUT, "Fail crtc apply(crtc_id:%d, rotate:%d, %dx%d+%d+%d\n",
                secCrtcID(pCrtcPriv), rotation, x, y, pCrtc->mode.HDisplay, pCrtc->mode.VDisplay);
@@ -203,7 +229,7 @@ fail:
     pCrtc->y = saved_y;
     pCrtc->rotation = saved_rotation;
 
-    return ret;
+    return FALSE;
 }
 
 static void
@@ -315,14 +341,22 @@ SECDummyCrtcDestroy(xf86CrtcPtr pCrtc)
 static xf86OutputStatus
 SECDummyOutputDetect(xf86OutputPtr pOutput)
 {
-    /* go to the hw and retrieve a new output struct */
-    XDBG_DEBUG(MDOUT,"\n");
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
-
     if (pOutputPriv == NULL)
     {
         return XF86OutputStatusUnknown;
     }
+    SECPtr pSec = SECPTR (pOutput->scrn);
+    if (pSec == NULL)
+    {
+        return XF86OutputStatusUnknown;
+    }
+    SECModePtr pSecMode = pSec->pSecMode;
+    if (pSecMode == NULL)
+    {
+        return XF86OutputStatusUnknown;
+    }
+#if 0
     if (pOutput->randr_output && pOutput->randr_output->numUserModes)
     {
         xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pOutput->scrn);
@@ -333,6 +367,18 @@ SECDummyOutputDetect(xf86OutputPtr pOutput)
             secDummyOutputInit(pOutput->scrn, pSec->pSecMode, TRUE);
         }
     }
+#endif
+    SECOutputPrivPtr pCur = NULL, pNext = NULL;
+    xorg_list_for_each_entry_safe (pCur, pNext, &pSecMode->outputs, link)
+    {
+        if (pCur->is_dummy == FALSE && pCur->mode_output->connection == DRM_MODE_CONNECTED)
+        {
+            return XF86OutputStatusDisconnected;
+/* TODO: Need to change flag useAsyncSwap not here */
+            pSec->useAsyncSwap = FALSE;
+        }
+    }
+    pSec->useAsyncSwap = TRUE;
     return XF86OutputStatusConnected;
 }
 
@@ -425,16 +471,58 @@ SECDummyOutputGetProperty(xf86OutputPtr pOutput, Atom property)
     return FALSE;
 }
 
+static void
+SECDummyCrtcSetCursorColors(xf86CrtcPtr pCrtc, int bg, int fg)
+{
+    XDBG_TRACE (MDOUT, "[%p]  \n", pCrtc);
+}
+
+static void
+SECDummyCrtcSetCursorPosition (xf86CrtcPtr pCrtc, int x, int y)
+{
+    XDBG_TRACE (MDOUT, "[%p]  \n", pCrtc);
+    return;
+}
+
+static void
+SECDummyCrtcShowCursor (xf86CrtcPtr pCrtc)
+{
+    XDBG_TRACE (MDOUT, "[%p]  \n", pCrtc);
+    return;
+}
+
+static void
+SECDummyCrtcHideCursor (xf86CrtcPtr pCrtc)
+{
+    XDBG_TRACE (MDOUT, "[%p]  \n", pCrtc);
+    return;
+}
+
+#ifdef LATEST_XORG
+static Bool
+#else
+static void
+#endif
+SECDummyCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
+{
+    XDBG_TRACE (MDOUT, "[%p]  \n", pCrtc);
+#ifdef LATEST_XORG
+    return TRUE;
+#else
+    return;
+#endif
+}
+
 static const xf86CrtcFuncsRec sec_crtc_dummy_funcs =
 {
     .dpms = SECDummyCrtcDpms,
     .set_mode_major = SECDummyCrtcSetModeMajor,
+    .set_cursor_colors = SECDummyCrtcSetCursorColors,
+    .set_cursor_position = SECDummyCrtcSetCursorPosition,
+    .show_cursor = SECDummyCrtcShowCursor,
+    .hide_cursor = SECDummyCrtcHideCursor,
+    .load_cursor_argb = SECDummyCrtcLoadCursorArgb,
 #if 0
-    .set_cursor_colors = SECCrtcSetCursorColors,
-    .set_cursor_position = SECCrtcSetCursorPosition,
-    .show_cursor = SECCrtcShowCursor,
-    .hide_cursor = SECCrtcHideCursor,
-    .load_cursor_argb = SECCrtcLoadCursorArgb,
     .shadow_create = SECCrtcShadowCreate,
     .shadow_allocate = SECCrtcShadowAllocate,
     .shadow_destroy = SECCrtcShadowDestroy,
@@ -516,34 +604,33 @@ secDummyOutputInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, Bool late)
     pOutput->possible_crtcs = ~((1 << pSecMode->num_real_crtc) - 1);
     pOutput->possible_clones = ~((1 << pSecMode->num_real_output) - 1);
     pOutputPriv->is_dummy = TRUE;
-    pOutputPriv->output_id = pSecMode->num_real_output+pSecMode->num_dummy_output;
+    pOutputPriv->output_id = 1000+pSecMode->num_dummy_output;
 
     pOutputPriv->mode_output = calloc(1, sizeof(drmModeConnector));
     if (pOutputPriv->mode_output == NULL)
         goto err;
     pOutputPriv->mode_output->connector_type = DRM_MODE_CONNECTOR_Unknown;
     pOutputPriv->mode_output->connector_type_id = pSecMode->num_dummy_output+1;
-    pOutputPriv->mode_output->connector_id = pSecMode->num_real_output+pSecMode->num_dummy_output;
+    pOutputPriv->mode_output->connector_id = 1000+pSecMode->num_dummy_output;
+    pOutputPriv->mode_output->connection = DRM_MODE_UNKNOWNCONNECTION;
     pOutputPriv->mode_output->count_props = 0;
     pOutputPriv->mode_output->count_encoders = 0;
-    pOutputPriv->mode_output->count_modes = 2;
+    pOutputPriv->mode_encoder = NULL;
+    pOutputPriv->mode_output->count_modes = 1;
     pOutputPriv->mode_output->modes = calloc(2, sizeof(drmModeModeInfo));
     if (pOutputPriv->mode_output->modes == NULL)
         goto err;
+#if 0
     pOutputPriv->mode_encoder = calloc(1, sizeof(drmModeEncoder));
     if (pOutputPriv->mode_encoder == NULL)
         goto err;
-
     pOutputPriv->mode_encoder->possible_clones = ~((1 << pSecMode->num_real_output) - 1);
     pOutputPriv->mode_encoder->possible_crtcs = ~((1 << pSecMode->num_real_crtc) - 1);
     pOutputPriv->mode_encoder->encoder_type = DRM_MODE_ENCODER_NONE;
+#endif
     pModes = xf86CVTMode(1024, 768, 60, 0, 0);
     secDisplayModeToKmode (pScrn,
                           &pOutputPriv->mode_output->modes[0],
-                          pModes);
-    pModes = xf86CVTMode(720, 1280, 60, 0, 0);
-    secDisplayModeToKmode (pScrn,
-                          &pOutputPriv->mode_output->modes[1],
                           pModes);
     free(pModes);
     pOutputPriv->pSecMode = pSecMode;
@@ -623,7 +710,7 @@ secDummyCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode)
 {
     XDBG_DEBUG(MDOUT,"\n");
     xf86CrtcPtr pCrtc = NULL;
-    DisplayModePtr pModes = NULL;
+//    DisplayModePtr pModes = NULL;
     SECCrtcPrivPtr pCrtcPriv;
 
     pCrtcPriv = calloc (sizeof (SECCrtcPrivRec), 1);
@@ -637,9 +724,9 @@ secDummyCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode)
         return NULL;
     }
     pCrtcPriv->is_dummy = TRUE;
-    pCrtcPriv->idx = pSecMode->num_real_crtc+pSecMode->num_dummy_crtc;
+    pCrtcPriv->idx = 1000 + pSecMode->num_dummy_crtc;
     pCrtcPriv->mode_crtc = calloc(1, sizeof(drmModeCrtc));
-
+#if 0
     pModes = xf86CVTMode(720, 1280, 60, 0, 0);
     secDisplayModeToKmode (pScrn,
                           &pCrtcPriv->kmode,
@@ -648,7 +735,9 @@ secDummyCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode)
                           &pCrtcPriv->mode_crtc->mode,
                           pModes);
     free(pModes);
-    pCrtcPriv->mode_crtc->crtc_id = pSecMode->num_real_crtc+pSecMode->num_dummy_crtc;
+#endif
+    /* TODO: Unique crtc_id */
+    pCrtcPriv->mode_crtc->crtc_id = 1000 + pSecMode->num_dummy_crtc;
 
     pCrtcPriv->move_layer = FALSE;
     pCrtcPriv->user_rotate = RR_Rotate_0;
@@ -656,7 +745,7 @@ secDummyCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode)
     pCrtcPriv->pSecMode = pSecMode;
     pCrtc->driver_private = pCrtcPriv;
 
-    pCrtcPriv->pipe = pSecMode->num_real_crtc+pSecMode->num_dummy_crtc;
+    pCrtcPriv->pipe = 1000 + pSecMode->num_dummy_crtc;
     pCrtcPriv->onoff = TRUE;
 
     xorg_list_init (&pCrtcPriv->pending_flips);

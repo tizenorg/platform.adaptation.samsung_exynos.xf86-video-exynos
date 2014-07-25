@@ -526,12 +526,8 @@ secModePreInit (ScrnInfoPtr pScrn, int drm_fd)
 #endif
     for (i = 0; i < pSecMode->plane_res->count_planes; i++)
         secPlaneInit (pScrn, pSecMode, i);
-#ifdef NO_CRTC_MODE
-    if (pSecMode->num_real_crtc == 0 ||
-        pSecMode->num_real_output == 0)
-    {
-        secDummyOutputInit(pScrn, pSecMode, FALSE);
-    }
+#if 0
+    secDummyOutputInit(pScrn, pSecMode, FALSE);
 #endif //NO_CRTC_MODE
     _secSetMainMode (pScrn, pSecMode);
 
@@ -548,9 +544,7 @@ secModePreInit (ScrnInfoPtr pScrn, int drm_fd)
     _secDisplaySetDrmEventCtx(pSecMode);
 
     pSec->pSecMode = pSecMode;
-#if 1
-    pSec->useAsyncSwap = TRUE;
-#endif
+
     /* virtaul x and virtual y of the screen is ones from main lcd mode */
     pScrn->virtualX = pSecMode->main_lcd_mode.hdisplay;
     pScrn->virtualY = pSecMode->main_lcd_mode.vdisplay;
@@ -1436,11 +1430,6 @@ secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
     SECModePtr pSecMode = pSec->pSecMode;
 
     /* if lcd is off, return true with msc = 0 */
-#if 1
-        *ust = 0;
-        *msc = 0;
-        return TRUE;
-#endif
 #ifdef NO_CRTC_MODE
     if (pSec->isCrtcOn == FALSE)
     {
@@ -1448,7 +1437,6 @@ secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
         *msc = 0;
         return TRUE;
     }
-    else
 #endif //NO_CRTC_MODE
     if (pSec->isLcdOff)
     {

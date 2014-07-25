@@ -193,20 +193,6 @@ SECOutputDetect(xf86OutputPtr pOutput)
 
     if (pOutputPriv == NULL)
     {
-#if 0
-        if (pOutput->randr_output && pOutput->randr_output->numUserModes)
-        {
-            xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pOutput->scrn);
-
-            if (xf86_config->output[xf86_config->num_output-1] == pOutput)
-            {
-               SECPtr pSec = (SECPtr) pOutput->scrn->driverPrivate;
-               secOutputDummyInit(pOutput->scrn, pSec->pSecMode, TRUE);
-            }
-
-            return XF86OutputStatusConnected;
-        }
-#endif //NO_CRTC_MODE
         return XF86OutputStatusDisconnected;
     }
 
@@ -767,9 +753,6 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
     SECModePtr pSecMode = pSec->pSecMode;
     Bool ret = TRUE;
     int i;
-#if 1
-    return TRUE;
-#endif
     for (i = 0; i < pSecMode->mode_res->count_connectors; i++)
     {
 #ifdef NO_CRTC_MODE
@@ -798,6 +781,11 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
             ret = FALSE;
             break;
 #endif
+        }
+
+        if (pOutputPriv->is_dummy == TRUE)
+        {
+            continue;
         }
 #ifdef NO_CRTC_MODE
         pOutputPriv->pOutput->crtc = NULL;
