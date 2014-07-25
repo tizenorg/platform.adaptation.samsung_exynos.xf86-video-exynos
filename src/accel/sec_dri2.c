@@ -1759,6 +1759,9 @@ SECDri2ReuseBufferNotify (DrawablePtr pDraw, DRI2BufferPtr pBuf)
             {
                 flags->data.idx_reuse = 0;
             }
+
+            /* [TODO] soolim: HACK::::: update the full region of the buffer */
+            flags->data.idx_reuse = 0;
         }
         else
         {
