@@ -2279,7 +2279,7 @@ secVideoQueryImageAttrs (ScrnInfoPtr  pScrn,
             lengths[0] = size;
 
         if (pitches)
-            pitches[1] = *w >> 1;
+            pitches[1] = *w;
 
         tmp = ALIGN_TO_8KB(ALIGN_TO_128B(*w) * ALIGN_TO_32B(*h >> 1));
         size += tmp;
