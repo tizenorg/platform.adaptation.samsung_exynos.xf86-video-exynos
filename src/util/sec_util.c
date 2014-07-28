@@ -1977,7 +1977,10 @@ _secUtilAllocVideoBuffer (ScrnInfoPtr scrn, int id, int width, int height,
         int alloc_size = 0;
 
         if (id == FOURCC_SN12 || id == FOURCC_SN21 || id == FOURCC_ST12)
+        {
             alloc_size = vbuf->lengths[i];
+            vbuf->offsets[i] = 0;
+        }
         else if (i == 0)
             alloc_size = vbuf->size;
 

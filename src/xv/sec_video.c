@@ -790,6 +790,8 @@ _secVideoGetInbufZeroCopy (SECPortPrivPtr pPort, unsigned int *names, unsigned i
                 inbuf->handles[i] = bo_handle.u32;
                 XDBG_GOTO_IF_FAIL (inbuf->handles[i] > 0, fail_dma);
 
+                inbuf->offsets[i] = 0;
+
                 XDBG_DEBUG (MVDO, "%d, key(%d) => bo(%p) handle(%d)\n",
                             i, inbuf->keys[i], inbuf->bo[i], inbuf->handles[i]);
             }
