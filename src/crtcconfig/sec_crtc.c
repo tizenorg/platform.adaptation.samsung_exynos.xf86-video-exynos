@@ -1419,22 +1419,14 @@ SECCrtcHideCursor (xf86CrtcPtr pCrtc)
     _cursorHide (pCrtc);
 }
 
-#ifdef LATEST_XORG
-static Bool
-#else
 static void
-#endif
 SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
 
     if (pCrtcPriv == NULL || image == NULL)
     {
-#ifdef LATEST_XORG
-        return FALSE;
-#else
     	return;
-#endif
     }
     XDBG_TRACE (MCRS, "[%p] image(%p) \n", pCrtc, image);
 
@@ -1446,12 +1438,7 @@ SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
                                      , NULL
                                      , 0);
 
-#ifdef LATEST_XORG
-    XDBG_RETURN_VAL_IF_FAIL (pCrtcPriv->backup_image != NULL, FALSE);
-#else
     XDBG_RETURN_IF_FAIL (pCrtcPriv->backup_image != NULL);
-#endif
-
 
     memcpy (pixman_image_get_data(pCrtcPriv->backup_image), image, SEC_CURSOR_W * SEC_CURSOR_H * 4);
 
@@ -1462,9 +1449,6 @@ SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
     }
 
     pCrtcPriv->need_cursor_update = TRUE;
-#ifdef LATEST_XORG
-    return TRUE;
-#endif
 }
 
 

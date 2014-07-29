@@ -37,10 +37,7 @@ XORG_DRIVER_CHECK_EXT(RENDER, renderproto)
 XORG_DRIVER_CHECK_EXT(XV, videoproto)
 
 # Checks for pkg-config packages
-PKG_CHECK_MODULES(PROTO, [xproto fontsproto])
-PKG_CHECK_MODULES(XORG, xorg-server >= 1.15.0,
-                  [AC_DEFINE(LATEST_XORG, [1], ["temp define for backward compatibility with old xorg-server"])],
-                  [PKG_CHECK_MODULES(XORG, xorg-server >= 1.0.0)])
+PKG_CHECK_MODULES(XORG, [xorg-server xproto fontsproto])
 
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
 
@@ -56,8 +53,8 @@ if test x"$udev" = xyes; then
 	AC_DEFINE(HAVE_UDEV,1,[Enable udev-based monitor hotplug detection])
 fi
 
-EXYNOS_CFLAGS="$EXYNOS_CFLAGS $PROTO_CFLAGS $XDBG_CFLAGS"
-EXYNOS_LIBS="$EXYNOS_LIBS $PROTO_CFLAGS $XDBG_LIBS"
+EXYNOS_CFLAGS="$EXYNOS_CFLAGS $XDBG_CFLAGS"
+EXYNOS_LIBS="$EXYNOS_LIBS $XDBG_LIBS"
 
 EXYNOS_CFLAGS="$EXYNOS_CFLAGS $DRM_CFLAGS $LIBTBM_CFLAGS "
 EXYNOS_LIBS="$EXYNOS_LIBS $DRM_LIBS $LIBTBM_LIBS "
