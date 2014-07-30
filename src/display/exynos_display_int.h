@@ -139,6 +139,8 @@ struct _exynosVBlankInfo
     void *data; /* request data pointer */
 
     void *xdbg_log_vblank;
+    void (*handler) (unsigned int sequence, unsigned int tv_sec,
+                            unsigned int tv_usec, void *user_data);
 };
 
 struct _exynosPageFlip
@@ -152,6 +154,10 @@ struct _exynosPageFlip
     void *data; /* request data pointer */
 
     void *xdbg_log_pageflip;
+
+    void (*handler) (unsigned int frame, unsigned int tv_exynos,
+    				 unsigned int tv_uexynos, void *event_data);
+
 };
 
 struct _exynosOutputPriv

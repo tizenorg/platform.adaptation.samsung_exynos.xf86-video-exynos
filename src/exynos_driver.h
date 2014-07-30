@@ -85,6 +85,7 @@ struct _exynosScrnPriv
     Bool is_sw_exa;
     Bool is_dri2;
     Bool is_clone;
+    Bool is_present;
     Bool is_vdisplay;
     Rotation  rotate;
 

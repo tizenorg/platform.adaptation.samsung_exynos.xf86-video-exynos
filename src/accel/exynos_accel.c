@@ -63,6 +63,16 @@ exynosAccelInit (ScreenPtr pScreen)
                 return FALSE;
             }
         }
+        
+//		if( pExynos->is_present )
+        {
+			if(!exynosPresentScreenInit(pScreen))
+			{
+				exynosExaDeinit (pScreen);
+				ctrl_free (pAccelInfo);
+				return FALSE;
+			}
+        }
     }
 
     return TRUE;

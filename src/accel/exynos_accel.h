@@ -63,6 +63,13 @@ void exynosAccelDeinit(ScreenPtr pScreen);
 void exynosDri2VblankEventHandler(unsigned int frame, unsigned int tv_sec, unsigned int tv_usec, void *event_data);
 void exynosDri2FlipEventHandler(unsigned int frame, unsigned int tv_sec, unsigned int tv_usec, void *event_data);
 
+/**************************************************************************
+ *  present event hanlers (vblank, pageflip)
+ **************************************************************************/
+void exynosPresentVblankHandler(uint64_t msc, uint64_t usec, void *data);
+void exynospresentVblankAbort(ScrnInfoPtr scrn, xf86CrtcPtr crtc, void *data);
+void exynosPresentFlipEvent(uint64_t msc, uint64_t ust, void *pageflip_data);
+void exynosPresentFlipAbort(void *pageflip_data);
 
 /**************************************************************************
  * Pixmap

@@ -72,6 +72,7 @@ typedef enum
     VBLANK_INFO_NONE,
     VBLANK_INFO_SWAP,
     VBLANK_INFO_PLANE,
+    VBLANK_INFO_PRESENT,
     VBLANK_INFO_MAX
 } EXYNOSVBlankType;
 
@@ -148,7 +149,9 @@ Bool        exynosDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CA
 
 Bool        exynosDisplayVBlank (ScrnInfoPtr pScrn, int pipe, CARD64 *target_msc, int flip, EXYNOSVBlankType type, void *data);
 
-Bool        exynosDisplayPageFlip (ScrnInfoPtr pScrn, int pipe, PixmapPtr pPix, void* data);
+Bool        exynosDisplayPageFlip (ScrnInfoPtr pScrn, int pipe, PixmapPtr pPix, void *data, void * handler);
+
+int 		exynosDisplayGetCrtcPipe (xf86CrtcPtr pCrtc);
 
 //int         exynosDisplaySetPlane (ScrnInfoPtr pScrn, int pipe, PixmapPtr pPixmap, xRectangle in_crop, xRentangle out_crop, int zpos);
 

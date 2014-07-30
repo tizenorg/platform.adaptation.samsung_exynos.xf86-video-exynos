@@ -101,6 +101,13 @@ void exynosExaSwDeinit(ScreenPtr pScreen);
 Bool exynosDri2Init(ScreenPtr pScreen);
 void exynosDri2Deinit(ScreenPtr pScreen);
 
+
+/**************************************************************************
+ * Present
+ **************************************************************************/
+/* Present */
+Bool exynosPresentScreenInit( ScreenPtr screen );
+
 /**************************************************************************
  * Pixmap
  **************************************************************************/

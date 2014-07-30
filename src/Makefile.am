@@ -22,6 +22,7 @@ exynos_drv_la_SOURCES += \
 	accel/exynos_accel.c \
 	accel/exynos_exa.c   \
 	accel/exynos_exa_sw.c \
+	accel/exynos_present.c \
 	accel/exynos_dri2.c
 AM_CFLAGS += -I@top_srcdir@/src/accel
 

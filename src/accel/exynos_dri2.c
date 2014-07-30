@@ -997,7 +997,7 @@ _scheduleFlip (DrawablePtr pDraw, DRI2FrameEventPtr pEvent, Bool calledFromProce
             return FALSE;
         }
     }
-    else if (!exynosDisplayPageFlip (pScrn, pEvent->pipe, pBufPriv->pPixmap, pEvent))
+    else if (!exynosDisplayPageFlip (pScrn, pEvent->pipe, pBufPriv->pPixmap, pEvent, exynosDri2FlipEventHandler))
     {
         XDBG_WARNING (MDRI2, "fail to exynosDisplayPageFlip.\n");
 
