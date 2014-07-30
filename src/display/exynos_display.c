@@ -243,7 +243,6 @@ EXYNOSCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height)
 
 
 
-
 static void
 EXYNOSDispInfoVblankHandler(int fd, unsigned int frame, unsigned int tv_sec,
                      unsigned int tv_usec, void *event_data)
@@ -260,6 +259,8 @@ EXYNOSDispInfoVblankHandler(int fd, unsigned int frame, unsigned int tv_sec,
 
     if (vblank_type == VBLANK_INFO_SWAP)
         exynosDri2VblankEventHandler (frame, tv_sec, tv_usec, data);
+    else if (vblank_type == VBLANK_INFO_PRESENT)
+    	exynosPresentVblankHandler(frame, (uint64_t) tv_sec * 1000000 + tv_usec, data);
 #if 0
     xDbgLogDrmEventRemoveVblank (pVblankInfo->xdbg_log_vblank);
 
@@ -340,9 +341,9 @@ EXYNOSDispInfoPageFlipHandler(int fd, unsigned int frame, unsigned int tv_sec,
     /* Last crtc completed flip? */
     if (pPageFlip->dispatch_me)
     {
-        /* Deliver cached msc, ust from reference crtc to flip event handler */
-        exynosDri2FlipEventHandler (pCrtcPriv->fe_frame, pCrtcPriv->fe_tv_sec,
-                                 pCrtcPriv->fe_tv_usec, pCrtcPriv->event_data);
+    	/* Deliver cached msc, ust from reference crtc to flip event handler */
+    	pPageFlip->handler(pCrtcPriv->fe_frame, pCrtcPriv->fe_tv_sec,
+                           pCrtcPriv->fe_tv_usec, pCrtcPriv->event_data);
     }
     ctrl_free (pPageFlip);
     pPageFlip = NULL;
@@ -1223,7 +1224,7 @@ exynosDisplayVBlank (ScrnInfoPtr pScrn, int pipe, CARD64 *target_msc, int flip,
 #define USE_PAGE_FLIP
 
 Bool
-exynosDisplayPageFlip (ScrnInfoPtr pScrn, int pipe, PixmapPtr pPix, void *data)
+exynosDisplayPageFlip (ScrnInfoPtr pScrn, int pipe, PixmapPtr pPix, void *data, void * handler)
 {
     EXYNOSPageFlipPtr pPageFlip = NULL;
     EXYNOSCrtcPrivPtr pCrtcPriv;
@@ -1274,6 +1275,7 @@ exynosDisplayPageFlip (ScrnInfoPtr pScrn, int pipe, PixmapPtr pPix, void *data)
         pPageFlip->pCrtc = pCrtc;
         pPageFlip->back_bo = tbm_bo_ref(tbo);
         pPageFlip->data = data;
+        pPageFlip->handler = handler;
 
         tbm_bo_map(pPageFlip->back_bo, TBM_DEVICE_2D, TBM_OPTION_READ);
         tbm_bo_unmap(pPageFlip->back_bo);

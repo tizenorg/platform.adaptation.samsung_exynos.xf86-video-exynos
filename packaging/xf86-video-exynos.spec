@@ -1,7 +1,7 @@
 Name:       xf86-video-exynos
 Summary:    X.Org X server driver for exynos
 Version:    0.0.1
-Release:    1
+Release:    1.1
 ExclusiveArch:  %arm
 Group:      Graphics & UI Framework/X Window System
 License:    MIT
@@ -16,6 +16,7 @@ BuildRequires:  pkgconfig(xproto)
 BuildRequires:  pkgconfig(fontsproto)
 BuildRequires:  pkgconfig(randrproto)
 BuildRequires:  pkgconfig(renderproto)
+BuildRequires:  pkgconfig(presentproto)
 BuildRequires:  pkgconfig(videoproto)
 BuildRequires:  pkgconfig(resourceproto)
 BuildRequires:  pkgconfig(libudev)

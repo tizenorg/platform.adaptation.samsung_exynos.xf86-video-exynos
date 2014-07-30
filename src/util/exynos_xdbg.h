@@ -61,41 +61,41 @@
 #endif
 
 #if LOG_LEVEL == XLOG_LEVEL_DEBUG
-#define XDBG_DEBUG(mod, fmt, ARG...)      xf86Msg(X_DEBUG, "[%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_DEBUG(mod, fmt, ARG...)      xf86Msg(X_DEBUG, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
 #else
 #define XDBG_DEBUG(mod, fmt, ARG...)
 #endif
 
 #if LOG_LEVEL <= XLOG_LEVEL_TRACE
-#define XDBG_TRACE(mod, fmt, ARG...)      xf86Msg(X_DEBUG, "[%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_TRACE(mod, fmt, ARG...)      xf86Msg(X_DEBUG, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
 #else
 #define XDBG_TRACE(mod, fmt, ARG...)
 #endif
 
 #if LOG_LEVEL <= XLOG_LEVEL_INFO
-#define XDBG_INFO(mod, fmt, ARG...)       xf86Msg(X_INFO, "[%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_INFO(mod, fmt, ARG...)       xf86Msg(X_INFO, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
 #else
 #define XDBG_INFO(mod, fmt, ARG...)
 #endif
 
 #if LOG_LEVEL <= XLOG_LEVEL_WARNING
-#define XDBG_WARNING(mod, fmt, ARG...)    xf86Msg(X_WARNING, "[%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_WARNING(mod, fmt, ARG...)    xf86Msg(X_WARNING, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
 #else
 #define XDBG_WARNING(mod, fmt, ARG...)
 #endif
 
 #if LOG_LEVEL <= XLOG_LEVEL_ERROR
-#define XDBG_ERROR(mod, fmt, ARG...)      xf86Msg(X_ERROR, "[%s] "fmt, __FUNCTION__, ##ARG)
-#define XDBG_ERRNO(mod, fmt, ARG...)      xf86Msg(X_ERROR, "[%s](err=%s(%d)) "fmt, __FUNCTION__, strerror(errno), errno, ##ARG)
-#define XDBG_NEVER_GET_HERE(mod)          xf86Msg(X_ERROR, "[%s] ** NEVER GET HERE **\n", __FUNCTION__)
-#define XDBG_WARNING_IF_FAIL(cond)         {if (!(cond)) { xf86Msg(X_ERROR,"[%s] '%s' failed.\n", __FUNCTION__, #cond);}}
-#define XDBG_RETURN_IF_FAIL(cond)          {if (!(cond)) { xf86Msg (X_ERROR,"[%s] '%s' failed.\n", __FUNCTION__, #cond); return; }}
-#define XDBG_RETURN_VAL_IF_FAIL(cond, val) {if (!(cond)) { xf86Msg (X_ERROR,"[%s] '%s' failed.\n", __FUNCTION__, #cond); return val; }}
-#define XDBG_GOTO_IF_FAIL(cond, dst)       {if (!(cond)) { xf86Msg (X_ERROR,"[%s] '%s' failed.\n", __FUNCTION__, #cond); goto dst; }}
+#define XDBG_ERROR(mod, fmt, ARG...)      xf86Msg(X_ERROR, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_ERRNO(mod, fmt, ARG...)      xf86Msg(X_ERROR, "[DDX][%s](err=%s(%d)) "fmt, __FUNCTION__, strerror(errno), errno, ##ARG)
+#define XDBG_NEVER_GET_HERE(mod)          xf86Msg(X_ERROR, "[DDX][%s] ** NEVER GET HERE **\n", __FUNCTION__)
+#define XDBG_WARNING_IF_FAIL(cond)         {if (!(cond)) { xf86Msg(X_ERROR,"[DDX][%s] '%s' failed.\n", __FUNCTION__, #cond);}}
+#define XDBG_RETURN_IF_FAIL(cond)          {if (!(cond)) { xf86Msg (X_ERROR,"[DDX][%s] '%s' failed.\n", __FUNCTION__, #cond); return; }}
+#define XDBG_RETURN_VAL_IF_FAIL(cond, val) {if (!(cond)) { xf86Msg (X_ERROR,"[DDX][%s] '%s' failed.\n", __FUNCTION__, #cond); return val; }}
+#define XDBG_GOTO_IF_FAIL(cond, dst)       {if (!(cond)) { xf86Msg (X_ERROR,"[DDX][%s] '%s' failed.\n", __FUNCTION__, #cond); goto dst; }}
 #define XDBG_GOTO_IF_ERRNO(cond, dst, errno)       {if (!(cond)) { XDBG_ERRNO (XDBG, "'%s' failed.\n", #cond); goto dst; }}
 #define XDBG_RETURN_VAL_IF_ERRNO(cond, val, errno)       {if (!(cond)) { XDBG_ERRNO (XDBG, "'%s' failed.\n", #cond); return val; }}
-#define XDBG_KLOG(mod, fmt, ARG...)       xf86Msg(X_INFO, "[%s] "fmt, __FUNCTION__, ##ARG)
-#define XDBG_SLOG(mod, fmt, ARG...)       xf86Msg(X_INFO, "[%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_KLOG(mod, fmt, ARG...)       xf86Msg(X_INFO, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
+#define XDBG_SLOG(mod, fmt, ARG...)       xf86Msg(X_INFO, "[DDX][%s] "fmt, __FUNCTION__, ##ARG)
 #else
 #define XDBG_ERRNO(mod, fmt, ARG...)
 #define XDBG_ERROR(mod, fmt, ARG...)
