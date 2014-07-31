@@ -235,7 +235,6 @@ typedef struct
     /* count */
     unsigned int put_counts;
     OsTimerPtr timer;
-
     Bool punched;
     int  stream_cnt;
     struct xorg_list link;
@@ -2568,6 +2567,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     {
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, TRUE);
+
     }
 
     _secVideoGetRotation (pPort, &pPort->hw_rotate);
@@ -2654,6 +2654,21 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, FALSE);
         pPort->inbuf_is_fb = FALSE;
+        if (pPort->tv)
+        {
+            if (secVideoTvResizeOutput (pPort->tv) == TRUE)
+            {
+                secCvtAddCallback (secVideoTvGetConverter(pPort->tv),
+                               _secVideoTvoutCvtCallback, pPort);
+                pPort->wait_vbuf = NULL;
+            }
+            else
+            {
+                secVideoTvDisconnect (pPort->tv);
+                pPort->tv = NULL;
+            }
+            pPort->punched = FALSE;
+        }
     }
 
     if (!_secVideoCalculateSize (pPort))

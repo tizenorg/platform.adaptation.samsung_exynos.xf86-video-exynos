@@ -52,5 +52,6 @@ int         secVideoTvPutImage    (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle
 
 SECCvt*     secVideoTvGetConverter (SECVideoTv *tv);
 void        secVideoTvSetConvertFormat (SECVideoTv *tv, unsigned int convert_id);
+Bool        secVideoTvResizeOutput (SECVideoTv* tv);
 
 #endif /* __SEC_VIDEO_TVOUT_H__ */
