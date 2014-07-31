@@ -2568,6 +2568,11 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     {
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, TRUE);
+        if (pPort->tv)
+        {
+            secVideoTvDisconnect (pPort->tv);
+            pPort->tv = NULL;
+        }
     }
 
     _secVideoGetRotation (pPort, &pPort->hw_rotate);
@@ -2653,6 +2658,11 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
                     pPort->d.dst.width, pPort->d.dst.height);
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, FALSE);
+        if (pPort->tv)
+        {
+            secVideoTvDisconnect (pPort->tv);
+            pPort->tv = NULL;
+        }
         pPort->inbuf_is_fb = FALSE;
     }
 
