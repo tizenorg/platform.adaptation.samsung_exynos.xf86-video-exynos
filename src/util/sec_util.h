@@ -137,6 +137,10 @@ void secUtilConvertBos (ScrnInfoPtr pScrn,
                         tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sstride,
                         tbm_bo dst_bo, int dw, int dh, xRectangle *dr, int dstride,
                         Bool composite, int rotate);
+void secUtilConvertBosVirtual (ScrnInfoPtr pScrn, int src_id,
+                        tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sstride,
+                        tbm_bo dst_bo, int dw, int dh, xRectangle *dr, int dstride,
+                        Bool composite, int rotate);
 
 void secUtilFreeHandle        (ScrnInfoPtr scrn, unsigned int handle);
 Bool secUtilConvertPhyaddress (ScrnInfoPtr scrn, unsigned int phy_addr, int size, unsigned int *handle);
@@ -182,6 +186,8 @@ void         secUtilRemoveFreeVideoBufferFunc  (SECVideoBuf *vbuf, FreeVideoBufF
 #define VBUF_IS_VALID(v)            secUtilIsVbufValid(v)
 #define VSTMAP(v)            ((v)?(v)->stamp:0)
 #define VBUF_IS_CONVERTING(v)       (!xorg_list_is_empty (&((v)->convert_info)))
+
+int findActiveConnector (ScrnInfoPtr pScrn);
 
 /* for debug */
 char*  secUtilDumpVideoBuffer (char *reply, int *len);

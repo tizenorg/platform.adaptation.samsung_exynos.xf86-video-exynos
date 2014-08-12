@@ -175,6 +175,7 @@ typedef struct
 
     /* video */
     SECCvt     *cvt;
+    SECCvt     *cvt2;
 
     SECVideoBuf *dstbuf;
     SECVideoBuf **outbuf;
@@ -190,6 +191,11 @@ typedef struct
     unsigned int status;
     CARD32       retire_time;
     CARD32       prev_time;
+
+    /*convert dst buffer*/
+    SECVideoBuf *capture_dstbuf;
+    Bool wait_rgb_convert;
+    int  active_connector;
 
     struct xorg_list link;
 } SECPortPriv, *SECPortPrivPtr;
@@ -233,6 +239,12 @@ static void _secVirtualVideoWbStopFunc (SECWb *wb, SECWbNotify noti, void *noti_
 static SECVideoBuf* _secVirtualVideoGetBlackBuffer (SECPortPrivPtr pPort);
 static Bool _secVirtualVideoEnsureOutBuffers (ScrnInfoPtr pScrn, SECPortPrivPtr pPort, int id, int width, int height);
 static void _secVirtualVideoWbCloseFunc (SECWb *wb, SECWbNotify noti, void *noti_data, void *user_data);
+
+static Bool
+secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *vbuf,xRectangle *srcrect, xRectangle *dstrect, int csc_range);
+static void _secCaptureCloseConverter (SECPortPrivPtr pPort);
+static void _secCaptureEnsureConverter (SECPortPrivPtr pPort);
+
 
 static SECVideoPortInfo*
 _port_info (DrawablePtr pDraw)
@@ -1044,8 +1056,8 @@ _secVirtualVideoComposite (SECVideoBuf *src, SECVideoBuf *dst,
     XDBG_RETURN_VAL_IF_FAIL (dst->bo[0] != NULL, FALSE);
     XDBG_RETURN_VAL_IF_FAIL (src->pitches[0] > 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL (dst->pitches[0] > 0, FALSE);
-    XDBG_RETURN_VAL_IF_FAIL (IS_RGB (src->id), FALSE);
-    XDBG_RETURN_VAL_IF_FAIL (IS_RGB (dst->id), FALSE);
+    XDBG_RETURN_VAL_IF_FAIL (IS_RGB(src->id) || IS_YUV(src->id), FALSE);
+    XDBG_RETURN_VAL_IF_FAIL (IS_RGB (dst->id)|| IS_YUV(dst->id), FALSE);
 
     XDBG_DEBUG (MVA, "comp(%d) src : %ld %c%c%c%c  %dx%d (%d,%d %dx%d) => dst : %ld %c%c%c%c  %dx%d (%d,%d %dx%d)\n",
                 composite, src->stamp, FOURCC_STR (src->id), src->width, src->height,
@@ -1062,13 +1074,164 @@ _secVirtualVideoComposite (SECVideoBuf *src, SECVideoBuf *dst,
     dst_rect.width = dst_w;
     dst_rect.height = dst_h;
 
-    secUtilConvertBos (src->pScrn,
+    secUtilConvertBosVirtual (src->pScrn, src->id,
                        src->bo[0], src->width, src->height, &src_rect, src->pitches[0],
                        dst->bo[0], dst->width, dst->height, &dst_rect, dst->pitches[0],
                        composite, rotate);
 
     return TRUE;
 }
+
+static int
+_secVirtualStillCompositeExtLayers (SECPortPrivPtr pPort, int connector_type, Bool complete)
+{
+    SECLayer    *lower_layer = NULL;
+    SECLayer    *upper_layer = NULL;
+    SECVideoBuf *pix_buf = NULL;
+    SECVideoBuf *ui_buf = NULL;
+    SECVideoBuf *dst_buf = NULL;
+    xRectangle   rect = {0,};
+    xRectangle src_rect, dst_rect;
+    int off_x = 0,off_y = 0;
+    Bool comp = FALSE;
+    int rotate=0;
+
+
+    lower_layer = secLayerFind (LAYER_OUTPUT_EXT, LAYER_LOWER1);
+    if (lower_layer)
+    {
+        secLayerGetRect (lower_layer, &src_rect, &dst_rect);
+        secLayerGetOffset (lower_layer, &off_x, &off_y);
+        dst_rect.x += off_x;
+        dst_rect.y += off_y;
+    }
+   //convertion is finished ?
+    if (!complete)
+    {
+        /* check if operation in process*/
+        if (pPort->wait_rgb_convert) goto convert_ipp_still;
+
+        if (lower_layer)
+        {
+            SECVideoBuf *lower_buf = secLayerGetBuffer (lower_layer);
+            if (!IS_RGB (lower_buf->id) || !IS_YUV (lower_buf->id))
+            {
+                /*convert vbuf to RGB format*/
+                 pPort->capture_dstbuf = NULL;
+                 if (secCaptureConvertImage (pPort, lower_buf, &src_rect, &src_rect, 0))
+                 {
+                     /* convertion in process */
+                     pPort->wait_rgb_convert = TRUE;
+                     goto convert_ipp_still;
+                  }
+
+             }
+
+            if (!lower_buf->secure && lower_buf && VBUF_IS_VALID (lower_buf))
+            {
+                /* In case of virtual, lower layer already has full-size. */
+                dst_buf = lower_buf;
+                comp = TRUE;
+            }
+        }
+    } else
+         {
+          if (pPort->capture_dstbuf)
+          dst_buf = pPort->capture_dstbuf;
+          pPort->wait_rgb_convert = FALSE;
+         }
+
+    pix_buf = _secVirtualVideoGetDrawableBuffer (pPort);
+    XDBG_GOTO_IF_FAIL (pix_buf != NULL, convert_ipp_still);
+
+    tbm_bo_map (pix_buf->bo[0], TBM_DEVICE_2D, TBM_OPTION_WRITE);
+
+    /* before compositing, flush all */
+    secUtilCacheFlush (pPort->pScrn);
+
+    comp = TRUE;
+
+    if (dst_buf)
+    {   pix_buf->crop.x = 0;
+        pix_buf->crop.y = 0;
+        pix_buf->crop.width  =  dst_buf->width;
+        pix_buf->crop.height =  dst_buf->height;
+
+       if(!_secVirtualVideoComposite (dst_buf, pix_buf,
+                                   0, 0, dst_buf->width, dst_buf->height,
+                                   dst_rect.x, dst_rect.y,
+                                   dst_rect.width, dst_rect.height,
+                                   comp, rotate))
+       {
+           secUtilVideoBufferUnref (dst_buf);
+           return FALSE;
+       }
+    }
+
+    ui_buf = _secVirtualVideoGetUIBuffer (pPort, connector_type); //Need to choose active connector DRM_MODE_CONNECTOR_VIRTUAL
+    if (ui_buf)
+    {
+        XDBG_DEBUG (MVA, "%dx%d(%d,%d, %dx%d) => %dx%d(%d,%d, %dx%d) :comp(%d) r(%d)\n",
+                        ui_buf->width, ui_buf->height,
+                        src_rect.x, src_rect.y, src_rect.width, src_rect.height,
+                        pix_buf->width, pix_buf->height,
+                        dst_rect.x, dst_rect.y, dst_rect.width, dst_rect.height,
+                        comp, rotate);
+
+        if (!_secVirtualVideoComposite (ui_buf, pix_buf,
+                                           ui_buf->crop.x, ui_buf->crop.y,
+                                           ui_buf->crop.width, ui_buf->crop.height,
+                                           0, 0,
+                                           pix_buf->width, pix_buf->height,
+                                           comp, 0))
+        {
+            secUtilVideoBufferUnref (ui_buf);
+            return FALSE;
+        }
+
+//        comp = TRUE;
+    }
+
+    upper_layer = secLayerFind (LAYER_OUTPUT_EXT, LAYER_UPPER);
+    if (upper_layer)
+    {
+        SECVideoBuf *upper_buf = secLayerGetBuffer (upper_layer);
+
+        if (upper_buf && VBUF_IS_VALID (upper_buf))
+        {
+            secLayerGetRect (upper_layer, &upper_buf->crop, &rect);
+
+            XDBG_DEBUG (MVA, "upper : %c%c%c%c  %dx%d (%d,%d %dx%d) => dst : %c%c%c%c  %dx%d (%d,%d %dx%d)\n",
+                        FOURCC_STR (upper_buf->id),
+                        upper_buf->width, upper_buf->height,
+                        upper_buf->crop.x, upper_buf->crop.y,
+                        upper_buf->crop.width, upper_buf->crop.height,
+                        FOURCC_STR (dst_buf->id),
+                        dst_buf->width, dst_buf->height,
+                        rect.x, rect.y, rect.width, rect.height);
+
+            _secVirtualVideoComposite (upper_buf, pix_buf,
+                                       upper_buf->crop.x, upper_buf->crop.y,
+                                       upper_buf->crop.width, upper_buf->crop.height,
+                                       rect.x, rect.y, rect.width, rect.height,
+                                       comp, 0);
+        }
+    }
+
+
+
+if (ui_buf)
+    secUtilVideoBufferUnref (ui_buf);
+if (dst_buf)
+    secUtilVideoBufferUnref (dst_buf);
+
+    DamageDamageRegion (pPort->pDraw, pPort->clipBoxes);
+    pPort->need_damage = FALSE;
+
+convert_ipp_still:
+    return TRUE;
+}
+
 
 static int
 _secVirtualVideoCompositeExtLayers (SECPortPrivPtr pPort, int connector_type)
@@ -1723,18 +1886,6 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
 
     XDBG_GOTO_IF_FAIL (pPort->need_damage == FALSE, put_still_fail);
 
-    if (pPort->capture == CAPTURE_MODE_STILL && pPort->display == DISPLAY_EXTERNAL)
-    {
-        XDBG_ERROR (MVA, "not implemented to capture still of external display. \n");
-        return BadImplementation;
-    }
-
-    if (pPort->display == DISPLAY_EXTERNAL && pSecMode->conn_mode != DISPLAY_CONN_MODE_VIRTUAL)
-    {
-        XDBG_ERROR (MVA, "virtual display not connected!. \n");
-        return BadRequest;
-    }
-
 #if 0
     ErrorF ("[Xorg] PutStill\n");
 #endif
@@ -1786,39 +1937,38 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
     pPort->need_damage = TRUE;
 
     /*find what connector is active*/
-    int active_connector = -1, i = 0; //DRM_MODE_CONNECTOR_HDMIA
-    xf86CrtcConfigPtr pXf86CrtcConfig;
-    xf86OutputPtr pOutput;
+    int active_connector = -1; //DRM_MODE_CONNECTOR_HDMIA
+    active_connector = findActiveConnector (pPort->pScrn);
 
-    pXf86CrtcConfig = XF86_CRTC_CONFIG_PTR (pPort->pScrn);
-
-    for ( i = 0; i < pXf86CrtcConfig->num_output; i++)
-    {
-        if (pXf86CrtcConfig->output[i]->status == XF86OutputStatusConnected)
-        {
-            pOutput = pXf86CrtcConfig->output[i];
-            if (!strcmp(pOutput->name, "LVDS1"))
-            {
-                active_connector = DRM_MODE_CONNECTOR_LVDS;
-                break;
-            }else if (!strcmp(pOutput->name, "HDMI1"))
-            {
-                active_connector = DRM_MODE_CONNECTOR_HDMIA;
-            }else if (!strcmp(pOutput->name, "Virtual1"))
-            {
-                active_connector = DRM_MODE_CONNECTOR_VIRTUAL;
-            }
-
-        }
-    }
     XDBG_RETURN_VAL_IF_FAIL (active_connector != -1, BadRequest);
+    pPort->active_connector = active_connector;
 
     if (pPort->capture == CAPTURE_MODE_STILL && pPort->display == DISPLAY_LCD)
     {
-        XDBG_DEBUG (MVA, "still mode.\n");
+        XDBG_DEBUG (MVA, "still mode LCD.\n");
 
         ret = _secVirtualVideoPutStill (pPort, active_connector);
         XDBG_GOTO_IF_FAIL (ret == Success, put_still_fail);
+    }
+    else if (pPort->capture == CAPTURE_MODE_STILL && pPort->display == DISPLAY_EXTERNAL)
+    {
+        XDBG_DEBUG (MVA, "still mode External Display.\n");
+
+        if (pSecMode->ext_connector_mode.hdisplay != pDraw->width ||
+            pSecMode->ext_connector_mode.vdisplay != pDraw->height)
+        {
+            XDBG_ERROR (MVA, "drawble should have %dx%d size. mode(%d), conn(%d)\n",
+                        pSecMode->ext_connector_mode.hdisplay,
+                        pSecMode->ext_connector_mode.vdisplay,
+                        pSecMode->set_mode, pSecMode->conn_mode);
+            ret = BadRequest;
+            goto put_still_fail;
+        }
+
+        if (!_secVirtualStillCompositeExtLayers (pPort, active_connector, FALSE))
+            goto put_still_fail;
+            ret = Success;
+
     }
     else if (pPort->capture == CAPTURE_MODE_STREAM && pPort->display == DISPLAY_LCD)
     {
@@ -2088,3 +2238,117 @@ secVirtualVideoGetBuffers (ScrnInfoPtr pScrn, int id, int width, int height, SEC
         *bufnum = pPort->outbuf_num;
     }
 }
+
+static void
+_secCaptureCvtCallback (SECCvt *cvt,
+                       SECVideoBuf *src,
+                       SECVideoBuf *dst,
+                       void *cvt_data,
+                       Bool error)
+{
+
+    SECPortPrivPtr pPort = (SECPortPrivPtr)cvt_data;
+
+
+    XDBG_RETURN_IF_FAIL (pPort != NULL);
+    XDBG_RETURN_IF_FAIL (cvt != NULL);
+    XDBG_RETURN_IF_FAIL (VBUF_IS_VALID (src));
+    XDBG_RETURN_IF_FAIL (VBUF_IS_VALID (dst));
+
+    XDBG_DEBUG (MVA, "++++++++++++++++++++++++ \n");
+    XDBG_DEBUG (MVA, "cvt(%p) src(%p) dst(%p)\n", cvt, src, dst);
+
+    /*begin composition again*/
+    //int  active_connector = findActiveConnector (pPort->pScrn);
+    pPort->capture_dstbuf = dst;
+    _secVirtualStillCompositeExtLayers (pPort, pPort->active_connector, TRUE);
+
+}
+
+
+static void
+_secCaptureEnsureConverter (SECPortPrivPtr pPort)
+{
+    if (pPort->cvt2)
+        return;
+
+    pPort->cvt2 = secCvtCreate (pPort->pScrn, CVT_OP_M2M);
+    XDBG_RETURN_IF_FAIL (pPort->cvt2 != NULL);
+
+    secCvtAddCallback (pPort->cvt2, _secCaptureCvtCallback, pPort);
+}
+
+static void
+_secCaptureCloseConverter (SECPortPrivPtr pPort)
+{
+    if (pPort->cvt2)
+    {
+        secCvtDestroy (pPort->cvt2);
+        pPort->cvt2 = NULL;
+    }
+
+    XDBG_TRACE (MVA, "done. \n");
+}
+
+static Bool
+secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf,xRectangle *srcrect, xRectangle *dstrect, int csc_range)
+{
+ SECCvtProp src_prop = {0,}, dst_prop = {0,};
+ SECVideoBuf *outbuf = pPort->capture_dstbuf;
+
+ pPort->secure=0;
+
+ if (outbuf == NULL)
+ {
+    outbuf = secUtilAllocVideoBuffer (pPort->pScrn, FOURCC_RGB32,
+                                      dstrect->width, dstrect->height,
+                                      FALSE, FALSE, pPort->secure);
+ }
+XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_convert);
+
+
+ if (!outbuf)
+     return FALSE;
+
+ _secCaptureEnsureConverter (pPort);
+ XDBG_GOTO_IF_FAIL (pPort->cvt2 != NULL, fail_to_convert);
+
+ src_prop.id = inbuf->id;
+ src_prop.width = srcrect->width;
+ src_prop.height = dstrect->height;
+ src_prop.crop = *srcrect;
+
+ dst_prop.id = FOURCC_RGB32;
+ dst_prop.width = dstrect->width;
+ dst_prop.height = dstrect->height;
+ dst_prop.crop = *dstrect;
+
+ dst_prop.degree = 0;
+ dst_prop.hflip = 0;
+ dst_prop.vflip = 0;
+ dst_prop.secure = pPort->secure;
+ dst_prop.csc_range = 0;// pPort->csc_range;
+
+ if (!secCvtEnsureSize (&src_prop, &dst_prop))
+     goto fail_to_convert;
+
+ if (!secCvtSetProperpty (pPort->cvt2, &src_prop, &dst_prop))
+     goto fail_to_convert;
+
+ if (!secCvtConvert (pPort->cvt2, inbuf, outbuf))
+     goto fail_to_convert;
+
+
+ secUtilVideoBufferUnref (outbuf);
+
+ return TRUE;
+
+fail_to_convert:
+ if (outbuf)
+     secUtilVideoBufferUnref (outbuf);
+
+ _secCaptureCloseConverter (pPort);
+
+ return FALSE;
+ }
+
