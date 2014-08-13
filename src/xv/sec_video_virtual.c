@@ -175,6 +175,7 @@ typedef struct
 
     /* video */
     SECCvt     *cvt;
+    SECCvt     *cvt2;
 
     SECVideoBuf *dstbuf;
     SECVideoBuf **outbuf;
@@ -2268,22 +2269,22 @@ _secCaptureCvtCallback (SECCvt *cvt,
 static void
 _secCaptureEnsureConverter (SECPortPrivPtr pPort)
 {
-    if (pPort->cvt)
+    if (pPort->cvt2)
         return;
 
-    pPort->cvt = secCvtCreate (pPort->pScrn, CVT_OP_M2M);
-    XDBG_RETURN_IF_FAIL (pPort->cvt != NULL);
+    pPort->cvt2 = secCvtCreate (pPort->pScrn, CVT_OP_M2M);
+    XDBG_RETURN_IF_FAIL (pPort->cvt2 != NULL);
 
-    secCvtAddCallback (pPort->cvt, _secCaptureCvtCallback, pPort);
+    secCvtAddCallback (pPort->cvt2, _secCaptureCvtCallback, pPort);
 }
 
 static void
 _secCaptureCloseConverter (SECPortPrivPtr pPort)
 {
-    if (pPort->cvt)
+    if (pPort->cvt2)
     {
-        secCvtDestroy (pPort->cvt);
-        pPort->cvt = NULL;
+        secCvtDestroy (pPort->cvt2);
+        pPort->cvt2 = NULL;
     }
 
     XDBG_TRACE (MVA, "done. \n");
@@ -2303,14 +2304,14 @@ secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf,xRectangle *s
                                       dstrect->width, dstrect->height,
                                       FALSE, FALSE, pPort->secure);
  }
-XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_put);
+XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_convert);
 
 
  if (!outbuf)
      return FALSE;
 
  _secCaptureEnsureConverter (pPort);
- //XDBG_GOTO_IF_FAIL (pPort->cvt != NULL, fail_to_put);
+ XDBG_GOTO_IF_FAIL (pPort->cvt2 != NULL, fail_to_convert);
 
  src_prop.id = inbuf->id;
  src_prop.width = srcrect->width;
@@ -2329,20 +2330,20 @@ XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_put);
  dst_prop.csc_range = 0;// pPort->csc_range;
 
  if (!secCvtEnsureSize (&src_prop, &dst_prop))
-     goto fail_to_put;
+     goto fail_to_convert;
 
- if (!secCvtSetProperpty (pPort->cvt, &src_prop, &dst_prop))
-     goto fail_to_put;
+ if (!secCvtSetProperpty (pPort->cvt2, &src_prop, &dst_prop))
+     goto fail_to_convert;
 
- if (!secCvtConvert (pPort->cvt, inbuf, outbuf))
-     goto fail_to_put;
+ if (!secCvtConvert (pPort->cvt2, inbuf, outbuf))
+     goto fail_to_convert;
 
 
  secUtilVideoBufferUnref (outbuf);
 
  return TRUE;
 
-fail_to_put:
+fail_to_convert:
  if (outbuf)
      secUtilVideoBufferUnref (outbuf);
 

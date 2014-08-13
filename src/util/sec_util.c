@@ -349,13 +349,6 @@ _secUtilConvertBosPIXMAN (int src_id, tbm_bo src_bo, int sw, int sh, xRectangle 
                              NULL,
                              rotate, FALSE, FALSE);
 
-//    secUtilConvertImage (op, src_bo_handle.ptr, dst_bo_handle.ptr,
-//                         PIXMAN_a8r8g8b8, PIXMAN_a8r8g8b8,
-//                         sw, sh, sr,
-//                         dw, dh, dr,
-//                         NULL,
-//                         rotate, FALSE, FALSE);
-
 access_done:
     if (src_bo_handle.ptr)
         tbm_bo_unmap (src_bo);
