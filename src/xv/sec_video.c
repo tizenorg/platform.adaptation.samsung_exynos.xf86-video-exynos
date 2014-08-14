@@ -2658,8 +2658,11 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
         {
             if (secVideoTvResizeOutput (pPort->tv) == TRUE)
             {
-                secCvtAddCallback (secVideoTvGetConverter(pPort->tv),
-                               _secVideoTvoutCvtCallback, pPort);
+                if (secVideoTvGetConverter(pPort->tv) != NULL)
+                {
+                    secCvtAddCallback (secVideoTvGetConverter(pPort->tv),
+                                       _secVideoTvoutCvtCallback, pPort);
+                }
                 pPort->wait_vbuf = NULL;
             }
             else
