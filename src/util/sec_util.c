@@ -319,13 +319,14 @@ access_done:
 }
 
 static void
-_secUtilConvertBosPIXMAN (tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sstride,
+_secUtilConvertBosPIXMAN (int src_id, tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sstride,
                           tbm_bo dst_bo, int dw, int dh, xRectangle *dr, int dstride,
                           Bool composite, int rotate)
 {
     tbm_bo_handle src_bo_handle = {0,};
     tbm_bo_handle dst_bo_handle = {0,};
     pixman_op_t op;
+    pixman_format_code_t src_pix_format;
 
     src_bo_handle = tbm_bo_map (src_bo, TBM_DEVICE_CPU, TBM_OPTION_READ);
     XDBG_GOTO_IF_FAIL (src_bo_handle.ptr != NULL, access_done);
@@ -338,12 +339,15 @@ _secUtilConvertBosPIXMAN (tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sst
     else
         op = PIXMAN_OP_OVER;
 
+    if (IS_YUV(src_id)) src_pix_format = PIXMAN_yuy2; //PIXMAN_yv12
+    else  src_pix_format = PIXMAN_a8r8g8b8;
+
     secUtilConvertImage (op, src_bo_handle.ptr, dst_bo_handle.ptr,
-                         PIXMAN_a8r8g8b8, PIXMAN_a8r8g8b8,
-                         sw, sh, sr,
-                         dw, dh, dr,
-                         NULL,
-                         rotate, FALSE, FALSE);
+                             src_pix_format, PIXMAN_a8r8g8b8,
+                             sw, sh, sr,
+                             dw, dh, dr,
+                             NULL,
+                             rotate, FALSE, FALSE);
 
 access_done:
     if (src_bo_handle.ptr)
@@ -352,9 +356,9 @@ access_done:
         tbm_bo_unmap (dst_bo);
 }
 
-/* support only RGB  */
+/* support only RGB and YUV */
 void
-secUtilConvertBos (ScrnInfoPtr pScrn,
+secUtilConvertBos (ScrnInfoPtr pScrn, int src_id,
                    tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sstride,
                    tbm_bo dst_bo, int dw, int dh, xRectangle *dr, int dstride,
                    Bool composite, int rotate)
@@ -389,7 +393,7 @@ secUtilConvertBos (ScrnInfoPtr pScrn,
                                composite, rotate);
     else
     {
-        _secUtilConvertBosPIXMAN (src_bo, sw, sh, sr, sstride,
+        _secUtilConvertBosPIXMAN (src_id, src_bo, sw, sh, sr, sstride,
                                   dst_bo, dw, dh, dr, dstride,
                                   composite, rotate);
         tbm_bo_map(src_bo, TBM_DEVICE_CPU, TBM_OPTION_WRITE);
@@ -572,7 +576,7 @@ secUtilDoDumpBmps (void *d, tbm_bo bo, int w, int h, xRectangle *crop, const cha
     temp.width = (crop)?crop->width:w;
     temp.height = (crop)?crop->height:h;
 
-    secUtilConvertBos (dump->pScrn, bo, w, h, &temp, w*4,
+    secUtilConvertBos (dump->pScrn, 0,bo, w, h, &temp, w*4,
                        next->bo, scale_w, scale_h, &next->rect, scale_w*4,
                        FALSE, 0);
 
@@ -2350,3 +2354,32 @@ secUtilDumpVideoBuffer (char *reply, int *len)
     return reply;
 }
 
+int findActiveConnector (ScrnInfoPtr pScrn)
+{
+    xf86CrtcConfigPtr pXf86CrtcConfig;
+    xf86OutputPtr pOutput;
+    int actv_connector = -1, i;
+
+    pXf86CrtcConfig = XF86_CRTC_CONFIG_PTR (pScrn);
+
+    for ( i = 0; i < pXf86CrtcConfig->num_output; i++)
+    {
+        if (pXf86CrtcConfig->output[i]->status == XF86OutputStatusConnected)
+        {
+            pOutput = pXf86CrtcConfig->output[i];
+            if (!strcmp(pOutput->name, "LVDS1"))
+            {
+                actv_connector = DRM_MODE_CONNECTOR_LVDS;
+                break;
+            }else if (!strcmp(pOutput->name, "HDMI1"))
+            {
+                actv_connector = DRM_MODE_CONNECTOR_HDMIA;
+            }else if (!strcmp(pOutput->name, "Virtual1"))
+            {
+                actv_connector = DRM_MODE_CONNECTOR_VIRTUAL;
+            }
+
+        }
+    }
+  return actv_connector;
+}

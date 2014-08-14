@@ -3072,7 +3072,7 @@ secVideoScreenRotate (ScrnInfoPtr pScrn, int degree)
         XDBG_RETURN_IF_FAIL (rot_vbuf != NULL);
         rot_vbuf->crop = rot_rect;
 
-        secUtilConvertBos (pScrn,
+        secUtilConvertBos (pScrn, 0,
                            old_vbuf->bo[0], old_vbuf->width, old_vbuf->height, &old_vbuf->crop, old_vbuf->width*4,
                            rot_vbuf->bo[0], rot_vbuf->width, rot_vbuf->height, &rot_vbuf->crop, rot_vbuf->width*4,
                            FALSE, degree_diff);
