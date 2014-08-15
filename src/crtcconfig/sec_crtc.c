@@ -2942,3 +2942,23 @@ secCrtcCheckInUseAll(ScrnInfoPtr pScrn)
     return ret;
 }
 #endif //NO_CRTC_MODE
+
+xf86CrtcPtr
+secCrtcGetByID(ScrnInfoPtr pScrn, int crtc_id)
+{
+    xf86CrtcConfigPtr pCrtcConfig = XF86_CRTC_CONFIG_PTR (pScrn);
+    int i;
+    for (i = 0; i < pCrtcConfig->num_crtc; i++)
+    {
+        SECCrtcPrivPtr pCrtcPriv = pCrtcConfig->crtc[i]->driver_private;
+        if (pCrtcPriv != NULL)
+        {
+            if (pCrtcPriv->mode_crtc != NULL)
+            {
+                if (pCrtcPriv->mode_crtc->crtc_id == crtc_id)
+                    return pCrtcConfig->crtc[i];
+            }
+        }
+    }
+    return NULL;
+}

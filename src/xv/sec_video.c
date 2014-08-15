@@ -2500,7 +2500,14 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     }
 
     XDBG_TRACE (MVDO, "======================================= \n");
-
+    XDBG_DEBUG(MVDO, "src:(x%d,y%d w%d-h%d), dst:(x%d,y%d w%d-h%d)\n",
+               src_x, src_y, src_w, src_h, dst_x, dst_y, dst_w, dst_h);
+    XDBG_DEBUG(MVDO, "image size:(w%d-h%d)\n", width, height);
+    if (pDraw)
+    {
+        XDBG_DEBUG(MVDO, "pixmap:(x%d,y%d w%d-h%d)\n",
+                   pDraw->x, pDraw->y, pDraw->width, pDraw->height);
+    }
     pPort->pScrn = pScrn;
     pPort->d.id = id;
     pPort->d.buf = buf;
