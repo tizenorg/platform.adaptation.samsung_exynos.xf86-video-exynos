@@ -68,6 +68,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MCVT    XDBG_M('C','V','T',0)
 #define MEXAH   XDBG_M('E','X','A','H')
 #define MG2D    XDBG_M('G','2','D',0)
+#define MDOUT   XDBG_M('D','O','T',0)
 
 #define _XID(win)   ((unsigned int)(((WindowPtr)win)->drawable.id))
 

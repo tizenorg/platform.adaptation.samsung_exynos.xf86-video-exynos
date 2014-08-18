@@ -121,12 +121,13 @@ typedef struct _secCrtcPriv
     Bool onoff_always;
 
     xf86CrtcPtr pCrtc;
+    Bool is_dummy;
     struct xorg_list link;
 } SECCrtcPrivRec, *SECCrtcPrivPtr;
-#ifdef NO_CRTC_MODE
+#if 0
 xf86CrtcPtr    secCrtcDummyInit (ScrnInfoPtr pScrn);
-Bool    secCrtcCheckInUseAll(ScrnInfoPtr pScrn);
 #endif
+Bool    secCrtcCheckInUseAll(ScrnInfoPtr pScrn);
 void    secCrtcInit  (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num);
 Bool    secCrtcOn    (xf86CrtcPtr pCrtc);
 Bool    secCrtcApply (xf86CrtcPtr pCrtc);

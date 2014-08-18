@@ -211,8 +211,8 @@ typedef struct
 
 #define ROOT_FB_ADDR (~0UL)
 
-#define SEC_CURSOR_W 64
-#define SEC_CURSOR_H 64
+#define SEC_CURSOR_W 128
+#define SEC_CURSOR_H 128
 
 /* sec framebuffer */
 SECFbPtr      secFbAllocate      (ScrnInfoPtr pScrn, int width, int height);

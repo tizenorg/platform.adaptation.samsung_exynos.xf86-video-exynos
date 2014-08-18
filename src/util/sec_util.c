@@ -822,8 +822,12 @@ secUtilCacheFlush (ScrnInfoPtr scrn)
     struct drm_exynos_gem_cache_op cache_op;
     SECPtr pSec;
     int ret;
+    static int success = TRUE;
 
     XDBG_RETURN_IF_FAIL (scrn != NULL);
+
+    if (!success)
+        return;
 
     pSec = SECPTR (scrn);
 
@@ -835,8 +839,11 @@ secUtilCacheFlush (ScrnInfoPtr scrn)
     ret = drmCommandWriteRead (pSec->drm_fd, DRM_EXYNOS_GEM_CACHE_OP,
                                &cache_op, sizeof(cache_op));
     if (ret)
+    {
         xf86DrvMsg (scrn->scrnIndex, X_ERROR,
                     "cache flush failed. (%s)\n", strerror(errno));
+        success = FALSE;
+    }
 }
 
 const PropertyPtr
@@ -1970,7 +1977,10 @@ _secUtilAllocVideoBuffer (ScrnInfoPtr scrn, int id, int width, int height,
         int alloc_size = 0;
 
         if (id == FOURCC_SN12 || id == FOURCC_SN21 || id == FOURCC_ST12)
+        {
             alloc_size = vbuf->lengths[i];
+            vbuf->offsets[i] = 0;
+        }
         else if (i == 0)
             alloc_size = vbuf->size;
 

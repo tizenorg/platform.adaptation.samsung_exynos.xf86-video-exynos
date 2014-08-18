@@ -48,8 +48,10 @@ typedef enum
 typedef enum
 {
     DISPLAY_CONN_MODE_NONE,
+    DISPLAY_CONN_MODE_LVDS,
     DISPLAY_CONN_MODE_HDMI,
     DISPLAY_CONN_MODE_VIRTUAL,
+    DISPLAY_CONN_MODE_DUMMY,
     DISPLAY_CONN_MODE_MAX,
 } SECDisplayConnMode;
 
@@ -107,6 +109,7 @@ typedef struct _secDrmMode
     int num_dummy_output;
     int num_real_output;
     int num_real_crtc;
+    int num_dummy_crtc;
 #endif
     SECDisplaySetMode  set_mode;
     SECDisplayConnMode conn_mode;

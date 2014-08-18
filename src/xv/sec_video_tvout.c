@@ -74,7 +74,7 @@ struct _SECVideoTv
     int          tv_height;
 
     xRectangle   tv_rect;
-
+    int          is_resized;
     unsigned int convert_id;
 };
 
@@ -137,7 +137,6 @@ _secVideoTvGetOutBuffer (SECVideoTv* tv, int width, int height, Bool secure)
         else
         {
             SECPtr pSec = SECPTR (tv->pScrn);
-
             tv->outbuf[i] = secUtilAllocVideoBuffer (tv->pScrn, tv->convert_id, width, height,
                                                      (pSec->scanout)?TRUE:FALSE, TRUE, secure);
             XDBG_RETURN_VAL_IF_FAIL (tv->outbuf[i] != NULL, NULL);
@@ -207,12 +206,20 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
     XDBG_DEBUG (MTVO, "rect (%d,%d %dx%d) \n",
                 rect->x, rect->y, rect->width, rect->height);
 
-    secLayerSetRect (tv->layer, &vbuf->crop, rect);
+    if (tv->is_resized == 1)
+    {
+        secLayerFreezeUpdate (tv->layer, FALSE);
+        tv->is_resized = 0;
+    }
 
     if (tv->lpos == LAYER_LOWER1)
         if (!_secVieoTvCalSize (tv, vbuf->width, vbuf->height,
                                 rect->width, rect->height))
+        {
             return 0;
+        }
+
+    secLayerSetRect (tv->layer, &vbuf->crop, rect);
 
     ret = secLayerSetBuffer (tv->layer, vbuf);
 
@@ -244,7 +251,6 @@ _secVideoTvCvtCallback (SECCvt *cvt,
         if (tv->outbuf[i] == dst)
             break;
     XDBG_RETURN_IF_FAIL (i < tv->outbuf_num);
-
     _secVideoTvPutImageInternal (tv, dst, &tv->tv_rect);
 
     XDBG_DEBUG (MTVO, "++++++++++++++++++++++++.. \n");
@@ -255,7 +261,7 @@ secVideoTvConnect (ScrnInfoPtr pScrn, unsigned int id, SECLayerPos lpos)
 {
     SECVideoTv* tv = NULL;
     SECModePtr pSecMode;
-
+    unsigned int convert_id = FOURCC_RGB32;
     XDBG_RETURN_VAL_IF_FAIL (pScrn != NULL, NULL);
     XDBG_RETURN_VAL_IF_FAIL (lpos >= LAYER_LOWER1 && lpos <= LAYER_UPPER, NULL);
     XDBG_RETURN_VAL_IF_FAIL (id > 0, NULL);
@@ -283,6 +289,11 @@ secVideoTvConnect (ScrnInfoPtr pScrn, unsigned int id, SECLayerPos lpos)
 
             secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
         }
+        else
+        {
+            XDBG_DEBUG(MTVO, "Not need converting id(%c%c%c%c)\n", FOURCC_STR (id));
+            convert_id = id;
+        }
     }
 
     XDBG_DEBUG (MTVO, "id(%c%c%c%c), lpos(%d)!\n", FOURCC_STR (id), lpos);
@@ -290,7 +301,7 @@ secVideoTvConnect (ScrnInfoPtr pScrn, unsigned int id, SECLayerPos lpos)
     tv->pScrn = pScrn;
     tv->lpos = lpos;
     tv->outbuf_index = -1;
-    tv->convert_id = FOURCC_RGB32;
+    tv->convert_id = convert_id;
     tv->outbuf_num = TVBUF_NUM;
 
     return tv;
@@ -303,6 +314,36 @@ fail_connect:
         free (tv);
     }
     return NULL;
+}
+
+Bool
+secVideoTvResizeOutput (SECVideoTv* tv)
+{
+    if (tv == NULL)
+        return FALSE;
+
+    if (tv->outbuf)
+    {
+        int i;
+        for (i = 0; i < tv->outbuf_num; i++)
+            if (tv->outbuf[i])
+                secUtilVideoBufferUnref (tv->outbuf[i]);
+
+        free (tv->outbuf);
+        tv->outbuf = NULL;
+    }
+
+    if (tv->cvt)
+    {
+        secCvtDestroy (tv->cvt);
+        tv->cvt = secCvtCreate (tv->pScrn, CVT_OP_M2M);
+        XDBG_RETURN_VAL_IF_FAIL (tv->cvt != NULL, FALSE);
+        secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
+    }
+//    secLayerHide(tv->layer);
+    secLayerFreezeUpdate (tv->layer, TRUE);
+    tv->is_resized = 1;
+    return TRUE;
 }
 
 void
@@ -492,9 +533,7 @@ secVideoTvPutImage (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect, int csc
 
         return 1;
     }
-
     /* can show buffer to HDMI at now. */
-
     return _secVideoTvPutImageInternal (tv, vbuf, rect);
 }
 

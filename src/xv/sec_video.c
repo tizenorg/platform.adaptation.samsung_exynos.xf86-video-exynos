@@ -235,7 +235,6 @@ typedef struct
     /* count */
     unsigned int put_counts;
     OsTimerPtr timer;
-
     Bool punched;
     int  stream_cnt;
     struct xorg_list link;
@@ -511,6 +510,26 @@ _secVideoGetTvoutMode (SECPortPrivPtr pPort)
         output = OUTPUT_LCD;
     }
 
+    /* OUTPUT_LCD is default display. If default display is HDMI,
+     * we need to change OUTPUT_LCD to OUTPUT_HDMI
+     */
+    if (output == OUTPUT_LCD)
+    {
+        xf86CrtcPtr pCrtc = secCrtcGetAtGeometry (pPort->pScrn,
+                      (int)pPort->d.pDraw->x, (int)pPort->d.pDraw->y,
+                      (int)pPort->d.pDraw->width, (int)pPort->d.pDraw->height);
+        int c = secCrtcGetConnectType (pCrtc);
+
+        if (c == DRM_MODE_CONNECTOR_LVDS || c == DRM_MODE_CONNECTOR_Unknown)
+            output = OUTPUT_LCD;
+        else if (c == DRM_MODE_CONNECTOR_HDMIA || c == DRM_MODE_CONNECTOR_HDMIB)
+            output = OUTPUT_EXT;
+        else if (c == DRM_MODE_CONNECTOR_VIRTUAL)
+            output = OUTPUT_EXT;
+        else
+            XDBG_NEVER_GET_HERE (MVDO);
+    }
+
     if (pPort->drawing == ON_PIXMAP)
         output = OUTPUT_LCD;
 
@@ -769,6 +788,8 @@ _secVideoGetInbufZeroCopy (SECPortPrivPtr pPort, unsigned int *names, unsigned i
                 bo_handle = tbm_bo_get_handle(inbuf->bo[i], TBM_DEVICE_DEFAULT);
                 inbuf->handles[i] = bo_handle.u32;
                 XDBG_GOTO_IF_FAIL (inbuf->handles[i] > 0, fail_dma);
+
+                inbuf->offsets[i] = 0;
 
                 XDBG_DEBUG (MVDO, "%d, key(%d) => bo(%p) handle(%d)\n",
                             i, inbuf->keys[i], inbuf->bo[i], inbuf->handles[i]);
@@ -1630,13 +1651,7 @@ _secVideoArrangeLayerPos (SECPortPrivPtr pPort, Bool by_notify)
     SECPortPrivPtr pCur = NULL, pNext = NULL;
     SECPortPrivPtr pAnother = NULL;
     int i = 0;
-#ifdef NO_CRTC_MODE
-/* Sorry This is temporary part */
-    secCrtcCursorEnable (pPort->pScrn, FALSE);
-    secLayerSetPos (pPort->layer, LAYER_UPPER);
-    return;
-/* ************************* */
-#endif
+
     xorg_list_for_each_entry_safe (pCur, pNext, &layer_owners, link)
     {
         if (pCur == pPort)
@@ -1740,6 +1755,7 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
 {
     ScrnInfoPtr pScrn = pPort->pScrn;
     SECModePtr pSecMode = (SECModePtr) SECPTR (pScrn)->pSecMode;
+    SECDisplaySetMode disp_mode = secDisplayGetDispSetMode (pScrn);
     xRectangle tv_rect = {0,};
     Bool first_put = FALSE;
 
@@ -1858,8 +1874,11 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
 
     if (!(output & OUTPUT_FULL))
     {
-        tv_rect.x = pPort->d.dst.x
-                    - pSecMode->main_lcd_mode.hdisplay;
+        if (disp_mode == DISPLAY_SET_MODE_EXT)
+            tv_rect.x = pPort->d.dst.x
+                        - pSecMode->main_lcd_mode.hdisplay;
+        else
+            tv_rect.x = pPort->d.dst.x;
         tv_rect.y = pPort->d.dst.y;
         tv_rect.width = pPort->d.dst.width;
         tv_rect.height = pPort->d.dst.height;
@@ -2241,7 +2260,7 @@ secVideoQueryImageAttrs (ScrnInfoPtr  pScrn,
             lengths[0] = size;
 
         if (pitches)
-            pitches[1] = *w >> 1;
+            pitches[1] = *w;
 
         tmp = (*w) * (*h >> 1);
         size += tmp;
@@ -2261,7 +2280,7 @@ secVideoQueryImageAttrs (ScrnInfoPtr  pScrn,
             lengths[0] = size;
 
         if (pitches)
-            pitches[1] = *w >> 1;
+            pitches[1] = *w;
 
         tmp = ALIGN_TO_8KB(ALIGN_TO_128B(*w) * ALIGN_TO_32B(*h >> 1));
         size += tmp;
@@ -2548,6 +2567,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     {
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, TRUE);
+
     }
 
     _secVideoGetRotation (pPort, &pPort->hw_rotate);
@@ -2634,6 +2654,24 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, FALSE);
         pPort->inbuf_is_fb = FALSE;
+        if (pPort->tv)
+        {
+            if (secVideoTvResizeOutput (pPort->tv) == TRUE)
+            {
+                if (secVideoTvGetConverter(pPort->tv) != NULL)
+                {
+                    secCvtAddCallback (secVideoTvGetConverter(pPort->tv),
+                                       _secVideoTvoutCvtCallback, pPort);
+                }
+                pPort->wait_vbuf = NULL;
+            }
+            else
+            {
+                secVideoTvDisconnect (pPort->tv);
+                pPort->tv = NULL;
+            }
+            pPort->punched = FALSE;
+        }
     }
 
     if (!_secVideoCalculateSize (pPort))

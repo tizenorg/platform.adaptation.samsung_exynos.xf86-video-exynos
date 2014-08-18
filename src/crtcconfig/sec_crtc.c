@@ -1707,15 +1707,7 @@ static const xf86CrtcFuncsRec sec_crtc_funcs =
     .gamma_set = SECCrtcGammaSet,
     .destroy = SECCrtcDestroy,
 };
-#ifdef NO_CRTC_MODE
-xf86CrtcPtr
-secCrtcDummyInit (ScrnInfoPtr pScrn)
-{
-    xf86CrtcPtr pCrtc = NULL;
-    pCrtc = xf86CrtcCreate (pScrn, &sec_crtc_funcs);
-    return pCrtc;
-}
-#endif //NO_CRTC_MODE
+
 void
 secCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
 {
@@ -1832,6 +1824,9 @@ secCrtcApply(xf86CrtcPtr pCrtc)
         /* modify the physical size of monitor */
 #if 0
         if (!strcmp(pOutput->name, "LVDS1"))
+        {
+            secDisplaySetDispConnMode(pScrn, DISPLAY_CONN_MODE_LVDS);
+        }
 #endif
         {
             pOutput->mm_width = pOutputPriv->mode_output->mmWidth;
@@ -1846,10 +1841,10 @@ secCrtcApply(xf86CrtcPtr pCrtc)
         output_ids[output_count] = pOutputPriv->mode_output->connector_id;
         output_count++;
     }
-
+#if 0
     if (!xf86CrtcRotate (pCrtc))
         goto done;
-
+#endif
     pCrtc->funcs->gamma_set (pCrtc, pCrtc->gamma_red, pCrtc->gamma_green,
                              pCrtc->gamma_blue, pCrtc->gamma_size);
 
@@ -1894,7 +1889,6 @@ secCrtcApply(xf86CrtcPtr pCrtc)
     /* for cache control */
     tbm_bo_map (bo, TBM_DEVICE_2D, TBM_OPTION_READ);
     tbm_bo_unmap (bo);
-
     ret = drmModeSetCrtc(pSecMode->fd, secCrtcID(pCrtcPriv),
                          fb_id, x, y, output_ids, output_count,
                          &pCrtcPriv->kmode);
@@ -1928,9 +1922,14 @@ secCrtcApply(xf86CrtcPtr pCrtc)
             pOutputPriv->dpms_mode = DPMSModeOn;
 
             /* update mode_encoder */
-            drmModeFreeEncoder (pOutputPriv->mode_encoder);
-            pOutputPriv->mode_encoder =
-                drmModeGetEncoder (pSecMode->fd, pOutputPriv->mode_output->encoders[0]);
+#ifdef NO_CRTC_MODE
+            if (pOutputPriv->is_dummy == FALSE)
+#endif
+            {
+                drmModeFreeEncoder (pOutputPriv->mode_encoder);
+                pOutputPriv->mode_encoder =
+                    drmModeGetEncoder (pSecMode->fd, pOutputPriv->mode_output->encoders[0]);
+            }
 
             /* set display connector and display set mode */
             if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
@@ -1963,11 +1962,13 @@ secCrtcApply(xf86CrtcPtr pCrtc)
     }
 
     secOutputDrmUpdate (pScrn);
-
+#if 1
     if (pScrn->pScreen)
         xf86_reload_cursors (pScrn->pScreen);
-
+#endif
+#if 0
 done:
+#endif
     free (output_ids);
     return ret;
 }
@@ -2677,11 +2678,14 @@ secCrtcTurn (xf86CrtcPtr pCrtc, Bool onoff, Bool always, Bool user)
         }
 
     /* 0 : normal, 1 : blank, 2 : defer */
-    if (!secUtilSetDrmProperty (pSecMode, crtc_id,
-                                DRM_MODE_OBJECT_CRTC, "mode", mode))
+    if (pCrtcPriv->is_dummy == FALSE)
     {
-        XDBG_ERROR (MDISP, "SetDrmProperty failed. crtc(%d) onoff(%d) \n", crtc_id, onoff);
-        return FALSE;
+        if (!secUtilSetDrmProperty (pSecMode, crtc_id,
+                                    DRM_MODE_OBJECT_CRTC, "mode", mode))
+        {
+            XDBG_ERROR (MDISP, "SetDrmProperty failed. crtc(%d) onoff(%d) \n", crtc_id, onoff);
+            return FALSE;
+        }
     }
 
     pCrtcPriv->onoff = onoff;

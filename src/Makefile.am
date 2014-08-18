@@ -17,7 +17,8 @@ exynos_drv_la_SOURCES += \
 	crtcconfig/sec_layer.c \
 	crtcconfig/sec_prop.c \
 	crtcconfig/sec_xberc.c \
-	crtcconfig/sec_display.c
+	crtcconfig/sec_display.c \
+	crtcconfig/sec_dummy.c
 AM_CFLAGS += -I@top_srcdir@/src/crtcconfig
 
 # accel

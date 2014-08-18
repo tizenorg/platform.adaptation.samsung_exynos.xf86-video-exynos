@@ -57,6 +57,7 @@
 #include "sec_xberc.h"
 #include <xf86RandR12.h>
 #include "common.h"
+#include "sec_dummy.h"
 
 static Bool SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height);
 static void SECModeVblankHandler(int fd, unsigned int frame, unsigned int tv_sec,
@@ -261,13 +262,12 @@ SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height)
                width, height);
 #ifdef NO_CRTC_MODE
     pSec->isCrtcOn = secCrtcCheckInUseAll(pScrn);
-#else
+#endif
     if (pScrn->virtualX == width &&
         pScrn->virtualY == height)
     {
         return TRUE;
     }
-#endif
     secFbResize(pSec->pFb, width, height);
 
     /* set  the new size of pScrn */
@@ -517,21 +517,17 @@ secModePreInit (ScrnInfoPtr pScrn, int drm_fd)
 
     xf86CrtcSetSizeRange (pScrn, 320, 200, pSecMode->mode_res->max_width,
                           pSecMode->mode_res->max_height);
-
+#if 1
     for (i = 0; i < pSecMode->mode_res->count_crtcs; i++)
         secCrtcInit (pScrn, pSecMode, i);
 
     for (i = 0; i < pSecMode->mode_res->count_connectors; i++)
         secOutputInit (pScrn, pSecMode, i);
-
+#endif
     for (i = 0; i < pSecMode->plane_res->count_planes; i++)
         secPlaneInit (pScrn, pSecMode, i);
-#ifdef NO_CRTC_MODE
-    if (pSecMode->num_real_crtc == 0 ||
-        pSecMode->num_real_output == 0)
-    {
-        secOutputDummyInit(pScrn, pSecMode, FALSE);
-    }
+#if 0
+    secDummyOutputInit(pScrn, pSecMode, FALSE);
 #endif //NO_CRTC_MODE
     _secSetMainMode (pScrn, pSecMode);
 
@@ -1441,7 +1437,6 @@ secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
         *msc = 0;
         return TRUE;
     }
-    else
 #endif //NO_CRTC_MODE
     if (pSec->isLcdOff)
     {

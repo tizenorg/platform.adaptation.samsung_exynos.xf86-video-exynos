@@ -594,14 +594,14 @@ secLayerShow (SECLayer *layer)
 
     if (layer->visible)
         return;
-
+#if 1
     if (layer->output == LAYER_OUTPUT_EXT && pSecMode->conn_mode == DISPLAY_CONN_MODE_VIRTUAL)
     {
         layer->visible = TRUE;
         XDBG_TRACE (MLYR, "layer(%p) shown. \n", layer);
         return;
     }
-
+#endif
     if (!_secLayerShowInternal (layer, FALSE))
         return;
 

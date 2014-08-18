@@ -193,20 +193,6 @@ SECOutputDetect(xf86OutputPtr pOutput)
 
     if (pOutputPriv == NULL)
     {
-#ifdef NO_CRTC_MODE
-        if (pOutput->randr_output && pOutput->randr_output->numUserModes)
-        {
-            xf86CrtcConfigPtr xf86_config = XF86_CRTC_CONFIG_PTR(pOutput->scrn);
-
-            if (xf86_config->output[xf86_config->num_output-1] == pOutput)
-            {
-               SECPtr pSec = (SECPtr) pOutput->scrn->driverPrivate;
-               secOutputDummyInit(pOutput->scrn, pSec->pSecMode, TRUE);
-            }
-
-            return XF86OutputStatusConnected;
-        }
-#endif //NO_CRTC_MODE
         return XF86OutputStatusDisconnected;
     }
 
@@ -377,7 +363,8 @@ SECOutputDpms(xf86OutputPtr pOutput, int dpms)
     int i;
 
     if (!strcmp(pOutput->name, "HDMI1") ||
-        !strcmp(pOutput->name, "Virtual1"))
+        !strcmp(pOutput->name, "Virtual1") ||
+        !strcmp(pOutput->name, "DUMMY1"))
             return;
 
     if (dpms == DPMSModeSuspend)
@@ -694,7 +681,9 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
     /* set the hidden properties : features for sec debugging*/
     /* TODO : xberc can works on only LVDS????? */
 #ifdef NO_CRTC_MODE
-        if ((pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA) || (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL))
+        if ((pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA) ||
+            (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL) ||
+            (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS))
 #else
         if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_LVDS)
 #endif
@@ -715,7 +704,7 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
             return TRUE;
     }
     /* set the hidden properties : features for driver specific funtions */
-#ifndef NO_CRTC_MODE
+
     if (pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
         pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_HDMIB ||
         pOutputPriv->mode_output->connector_type == DRM_MODE_CONNECTOR_VIRTUAL)
@@ -724,7 +713,7 @@ SECOutputSetProperty(xf86OutputPtr output, Atom property,
         if (secPropSetDisplayMode(output, property, value))
             return TRUE;
     }
-#endif
+
     return TRUE;
 }
 
@@ -764,7 +753,6 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
     SECModePtr pSecMode = pSec->pSecMode;
     Bool ret = TRUE;
     int i;
-
     for (i = 0; i < pSecMode->mode_res->count_connectors; i++)
     {
 #ifdef NO_CRTC_MODE
@@ -795,6 +783,10 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
 #endif
         }
 #ifdef NO_CRTC_MODE
+        if (pOutputPriv->is_dummy == TRUE)
+        {
+            continue;
+        }
         pOutputPriv->pOutput->crtc = NULL;
 #endif
         koutput = drmModeGetConnector (pSecMode->fd,
@@ -869,7 +861,7 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
         xf86DrvMsg (pScrn->scrnIndex, X_ERROR, "drm(output) update error. (%s)\n", strerror (errno));
     return ret;
 }
-#ifdef NO_CRTC_MODE
+#if 0
 Bool
 secOutputDummyInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, Bool late)
 {
