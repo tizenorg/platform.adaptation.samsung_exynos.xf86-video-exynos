@@ -1419,14 +1419,29 @@ SECCrtcHideCursor (xf86CrtcPtr pCrtc)
     _cursorHide (pCrtc);
 }
 
-static void
+#define XORG_VERSION_1_15 (((1) * 10000000) + ((15) * 100000))
+
+//Check if xorg version more or equal 1.15.
+//Function signature have been changed from this version
+#if XORG_VERSION_CURRENT >= XORG_VERSION_1_15
+	#define _RETURN_TYPE Bool
+	#define _RETURN_VAL(B) B;
+	#define _RETURN_FALSE_IF_FAIL(str) XDBG_RETURN_VAL_IF_FAIL(str, FALSE)
+#else
+	#define _RETURN_TYPE void
+	#define _RETURN_VAL(B)
+	#define _RETURN_FALSE_IF_FAIL(str) XDBG_RETURN_IF_FAIL(str)
+#endif
+
+
+static _RETURN_TYPE
 SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
 {
     SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
 
     if (pCrtcPriv == NULL || image == NULL)
     {
-    	return;
+    	return _RETURN_VAL(FALSE);
     }
     XDBG_TRACE (MCRS, "[%p] image(%p) \n", pCrtc, image);
 
@@ -1438,7 +1453,7 @@ SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
                                      , NULL
                                      , 0);
 
-    XDBG_RETURN_IF_FAIL (pCrtcPriv->backup_image != NULL);
+    _RETURN_FALSE_IF_FAIL (pCrtcPriv->backup_image != NULL);
 
     memcpy (pixman_image_get_data(pCrtcPriv->backup_image), image, SEC_CURSOR_W * SEC_CURSOR_H * 4);
 
@@ -1449,6 +1464,7 @@ SECCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
     }
 
     pCrtcPriv->need_cursor_update = TRUE;
+    return _RETURN_VAL(TRUE);
 }
 
 
