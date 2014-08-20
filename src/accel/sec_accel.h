@@ -75,6 +75,10 @@ typedef struct
     /* Last update SBC */
     XID owner;
     CARD64 sbc;
+
+    /* for DRI3 */
+    int stride;
+
 } SECPixmapPriv;
 
 /* exa driver private infomation */
@@ -162,5 +166,12 @@ Bool secDri2Init              (ScreenPtr pScreen);
 void secDri2Deinit            (ScreenPtr pScreen);
 void secDri2FrameEventHandler (unsigned int frame, unsigned int tv_sec, unsigned int tv_usec, void *event_data);
 void secDri2FlipEventHandler  (unsigned int frame, unsigned int tv_sec, unsigned int tv_usec, void *event_data, Bool flip_failed);
+
+/**************************************************************************
+ * DRI3
+ **************************************************************************/
+/* DRI3 */
+Bool secDri3ScreenInit	  (ScreenPtr screen);
+
 
 #endif /* _SEC_ACCEL_H_ */

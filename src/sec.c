@@ -112,6 +112,7 @@ typedef enum
     OPTION_SCANOUT,
     OPTION_ACCEL2D,
     OPTION_PRESENT,
+    OPTION_DRI3,
     OPTION_PARTIAL_UPDATE,
 } SECOpts;
 
@@ -130,6 +131,7 @@ static const OptionInfoRec SECOptions[] =
     { OPTION_SCANOUT,  "scanout",    OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_ACCEL2D,  "accel_2d",   OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_ACCEL2D,  "present",    OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_ACCEL2D,  "dri3",   	 OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_PARTIAL_UPDATE,  "partial_update",    OPTV_BOOLEAN, {0}, FALSE },
     { -1,              NULL,         OPTV_NONE,    {0}, FALSE }
 };
@@ -510,6 +512,12 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
     if (xf86ReturnOptValBool (pSec->Options, OPTION_PRESENT, FALSE))
     {
         pSec->is_present = TRUE;
+    }
+    
+    /* dri3 */
+    if (xf86ReturnOptValBool (pSec->Options, OPTION_DRI3, FALSE))
+    {
+	pSec->is_dri3 = TRUE;
     }
 
     /* rotate */
@@ -1040,6 +1048,16 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
             	{
                     xf86DrvMsg (pScrn->scrnIndex, X_WARNING,
                                 "Present initialization failed\n");
+                }
+            }
+
+            /* init the dri3 */
+            if (pSec->is_dri3)
+            {
+                if (!secDri3ScreenInit (pScreen))
+                {
+                    xf86DrvMsg (pScrn->scrnIndex, X_WARNING,
+                                "DRI3 initialization failed\n");
                 }
             }
         }

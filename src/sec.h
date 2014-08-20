@@ -99,6 +99,7 @@ typedef struct
     Bool is_exa;
     Bool is_dri2;
     Bool is_present;
+    Bool is_dri3;
     Bool is_sw_exa;
     Bool is_accel_2d;
     Bool is_wb_clone;
