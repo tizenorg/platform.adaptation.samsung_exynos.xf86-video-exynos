@@ -111,6 +111,7 @@ typedef enum
     OPTION_CACHABLE,
     OPTION_SCANOUT,
     OPTION_ACCEL2D,
+    OPTION_PRESENT,
     OPTION_PARTIAL_UPDATE,
 } SECOpts;
 
@@ -128,6 +129,7 @@ static const OptionInfoRec SECOptions[] =
     { OPTION_CACHABLE, "cachable",   OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_SCANOUT,  "scanout",    OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_ACCEL2D,  "accel_2d",   OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_ACCEL2D,  "present",    OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_PARTIAL_UPDATE,  "partial_update",    OPTV_BOOLEAN, {0}, FALSE },
     { -1,              NULL,         OPTV_NONE,    {0}, FALSE }
 };
@@ -502,6 +504,12 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
             flip_bufs = 3;
             pSec->flip_bufs = flip_bufs;
         }
+    }
+
+    /* present */
+    if (xf86ReturnOptValBool (pSec->Options, OPTION_PRESENT, FALSE))
+    {
+        pSec->is_present = TRUE;
     }
 
     /* rotate */
@@ -1023,6 +1031,15 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
                 {
                     xf86DrvMsg (pScrn->scrnIndex, X_WARNING,
                                 "DRI2 initialization failed\n");
+                }
+            }
+            
+            if (pSec->is_present)
+            {
+            	if(!secPresentScreenInit(pScreen))
+            	{
+                    xf86DrvMsg (pScrn->scrnIndex, X_WARNING,
+                                "Present initialization failed\n");
                 }
             }
         }

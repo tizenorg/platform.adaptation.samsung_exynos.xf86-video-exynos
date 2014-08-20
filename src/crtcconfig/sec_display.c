@@ -308,6 +308,12 @@ SECModeVblankHandler(int fd, unsigned int frame, unsigned int tv_sec,
     }
     else if (vblank_type == VBLANK_INFO_PLANE)
         secLayerVBlankEventHandler (frame, tv_sec, tv_usec, data);
+    else if (vblank_type == VBLANK_INFO_PRESENT)
+    {
+        XDBG_TRACE (MDISP, "vblank handler (%p, %ld, %ld)\n",
+                    pVblankInfo, pVblankInfo->time, GetTimeInMillis () - pVblankInfo->time);
+    	secPresentVblankHandler(frame, tv_sec, tv_usec, data);
+    }
     else
         XDBG_ERROR (MDISP, "unknown the vblank type\n");
 
@@ -416,8 +422,9 @@ SECModePageFlipHandler(int fd, unsigned int frame, unsigned int tv_sec,
         secCrtcCountFps(pCrtc);
 
         /* Deliver cached msc, ust from reference crtc to flip event handler */
-        secDri2FlipEventHandler (pCrtcPriv->fe_frame, pCrtcPriv->fe_tv_sec,
-                                 pCrtcPriv->fe_tv_usec, pCrtcPriv->flip_info, flip->flip_failed);
+        if (flip->handler)
+        	flip->handler(pCrtcPriv->fe_frame, pCrtcPriv->fe_tv_sec,
+                      	  pCrtcPriv->fe_tv_usec, pCrtcPriv->flip_info, flip->flip_failed);
     }
 
     free (flip);
@@ -709,7 +716,7 @@ int secModeGetCrtcPipe (xf86CrtcPtr pCrtc)
 }
 
 Bool
-secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo)
+secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo, SECFlipEventHandler handler)
 {
     SECPageFlipPtr pPageFlip = NULL;
     SECFbBoDataPtr bo_data;
@@ -761,6 +768,7 @@ secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe
             pPageFlip->back_bo = secRenderBoRef (back_bo);
             pPageFlip->data = flip_info;
             pPageFlip->flip_failed = FALSE;
+            pPageFlip->handler = handler;
 
             /* accessilitity */
             if (pCrtcPriv->bAccessibility || pCrtcPriv->screen_rotate_degree > 0)

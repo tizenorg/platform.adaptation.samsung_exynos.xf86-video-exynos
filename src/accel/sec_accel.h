@@ -144,6 +144,17 @@ void secExaG2dDeinit (ScreenPtr pScreen);
 
 
 /**************************************************************************
+ * Present
+ **************************************************************************/
+/* Present */
+Bool secPresentScreenInit  		(ScreenPtr pScreen);
+/* Present event handlers (vblank, pageflip) */
+void secPresentVblankHandler	(unsigned int frame, unsigned int tv_sec, unsigned int tv_usec, void* event_data);
+void secPresentFlipEventHandler	(unsigned int frame, unsigned int tv_sec, unsigned int tv_usec, void* event_data, Bool flip_failed);
+void secPresentVblankAbort		(ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void *data);
+void secPresentFlipAbort		(void* pageflip_data);
+
+/**************************************************************************
  * DRI2
  **************************************************************************/
 /* DRI2 */

@@ -52,6 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MEXAS   XDBG_M('E','X','A','S')
 #define MEVT    XDBG_M('E','V','T',0)
 #define MDRI2   XDBG_M('D','R','I','2')
+#define MDRI3   XDBG_M('D','R','I','3')
 #define MCRS    XDBG_M('C','R','S',0)
 #define MFLIP   XDBG_M('F','L','I','P')
 #define MDPMS   XDBG_M('D','P','M','S')
