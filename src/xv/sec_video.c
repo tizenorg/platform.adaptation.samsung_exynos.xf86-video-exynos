@@ -1520,7 +1520,6 @@ _secVideoCalculateSize (SECPortPrivPtr pPort)
     pPort->out_width = dst_prop.width;
     pPort->out_height = dst_prop.height;
     pPort->out_crop = dst_prop.crop;
-
     return TRUE;
 }
 
@@ -1801,6 +1800,16 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
         }
 
         tv_cvt = secVideoTvGetConverter (pPort->tv);
+
+        if (tv_cvt == NULL)
+        {
+            if (!secVideoCanDirectDrawing (NULL, pPort->d.src.width, pPort->d.src.height,
+                                           pPort->d.dst.width, pPort->d.dst.height))
+            {
+                XDBG_GOTO_IF_FAIL (secVideoTvReCreateConverter (pPort->tv),
+                                   fail_to_put_tvout);
+            }
+        }
         if (tv_cvt)
         {
             /* HDMI    : SN12
@@ -1836,7 +1845,11 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
                     secVideoTvSetConvertFormat (pPort->tv, FOURCC_RGB32);
             }
             else
+            {
+#if 0
                 secVideoTvSetConvertFormat (pPort->tv, FOURCC_SN12);
+#endif
+            }
 
             secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
         }
@@ -2502,12 +2515,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     XDBG_TRACE (MVDO, "======================================= \n");
     XDBG_DEBUG(MVDO, "src:(x%d,y%d w%d-h%d), dst:(x%d,y%d w%d-h%d)\n",
                src_x, src_y, src_w, src_h, dst_x, dst_y, dst_w, dst_h);
-    XDBG_DEBUG(MVDO, "image size:(w%d-h%d)\n", width, height);
-    if (pDraw)
-    {
-        XDBG_DEBUG(MVDO, "pixmap:(x%d,y%d w%d-h%d)\n",
-                   pDraw->x, pDraw->y, pDraw->width, pDraw->height);
-    }
+    XDBG_DEBUG(MVDO, "image size:(w%d-h%d) fourcc(%c%c%c%c)\n", width, height, FOURCC_STR(id));
     pPort->pScrn = pScrn;
     pPort->d.id = id;
     pPort->d.buf = buf;
@@ -2570,6 +2578,11 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
 
     old_drawing = pPort->drawing;
     pPort->drawing = _secVideodrawingOn (pPort);
+    if (pDraw)
+    {
+        XDBG_DEBUG(MVDO, "pixmap:(x%d,y%d w%d-h%d) on:%d\n",
+                   pDraw->x, pDraw->y, pDraw->width, pDraw->height, pPort->drawing);
+    }
     if (old_drawing != pPort->drawing)
     {
         _secVideoCloseConverter (pPort);
@@ -2663,14 +2676,14 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
         pPort->inbuf_is_fb = FALSE;
         if (pPort->tv)
         {
-            if (secVideoTvResizeOutput (pPort->tv) == TRUE)
+            if (secVideoTvResizeOutput (pPort->tv, &pPort->d.src, &pPort->d.dst) == TRUE)
             {
-                if (secVideoTvGetConverter(pPort->tv) != NULL)
-                {
-                    secCvtAddCallback (secVideoTvGetConverter(pPort->tv),
-                                       _secVideoTvoutCvtCallback, pPort);
-                }
                 pPort->wait_vbuf = NULL;
+                SECCvt *tv_cvt = secVideoTvGetConverter (pPort->tv);
+                if (tv_cvt != NULL)
+                {
+                    secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
+                }
             }
             else
             {

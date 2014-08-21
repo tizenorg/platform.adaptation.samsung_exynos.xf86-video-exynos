@@ -61,7 +61,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /* HW restriction */
 #define MIN_WIDTH   32
-#define MIN_HEIGHT   32
+#define MIN_HEIGHT   4
 
 enum
 {
@@ -390,7 +390,7 @@ _check_hw_restriction (ScrnInfoPtr pScrn, int crtc_id, int buf_w, int buf_h,
     }
 
     aligned_dst->width = (aligned_dst->width - aligned_dst->x) & (~0x1);
-    aligned_dst->height = (aligned_dst->height - aligned_dst->y) & (~0x1);
+    aligned_dst->height = (aligned_dst->height - aligned_dst->y);
 
     aligned_src->x = (src->x < 0) ? 0 : src->x;
     aligned_src->y = (src->y < 0) ? 0 : src->y;
@@ -413,7 +413,7 @@ _check_hw_restriction (ScrnInfoPtr pScrn, int crtc_id, int buf_w, int buf_h,
     }
 
     aligned_src->width = (aligned_src->width - aligned_src->x) & (~0x1);
-    aligned_src->height = (aligned_src->height - aligned_src->y) & (~0x1);
+    aligned_src->height = (aligned_src->height - aligned_src->y);
 #if 0
     if (!virtual_screen)
     {
@@ -441,17 +441,20 @@ _check_hw_restriction (ScrnInfoPtr pScrn, int crtc_id, int buf_w, int buf_h,
         XDBG_TRACE (MPLN, " => buf_w(%d) src(%d,%d) dst(%d,%d), virt(%d) start(%d) end(%d)\n",
                     buf_w, *new_src_x, *new_src_w, *new_dst_x, *new_dst_w, virtual_screen, start_dst, end_dst);
 #endif
-    XDBG_TRACE (MPLN, "src(x%d,y%d w%d-h%d) dst(x%d,y%d w%d-h%d)\n",
+    XDBG_TRACE (MPLN, "src(x%d,y%d w%d-h%d) dst(x%d,y%d w%d-h%d) ratio_x %f ratio_y %f\n",
                 src->x, src->y, src->width, src->height,
-                dst->x, dst->y, dst->width, dst->height);
+                dst->x, dst->y, dst->width, dst->height,
+                (double) src->width/dst->width, (double) src->height/dst->height);
     if (!memcmp(aligned_src, src, sizeof(xRectangle))
         || !memcmp(aligned_dst, dst, sizeof(xRectangle)))
     {
-        XDBG_TRACE(MPLN, "===> src(x%d,y%d w%d-h%d) dst(x%d,y%d w%d-h%d)\n",
+        XDBG_TRACE(MPLN, "===> src(x%d,y%d w%d-h%d) dst(x%d,y%d w%d-h%d) ratio_x %f ratio_y %f\n",
                    aligned_src->x, aligned_src->y,
                    aligned_src->width, aligned_src->height,
                    aligned_dst->x, aligned_dst->y,
-                   aligned_dst->width, aligned_dst->height);
+                   aligned_dst->width, aligned_dst->height,
+                   (double) aligned_src->width / aligned_dst->width,
+                   (double) aligned_src->height / aligned_dst->height);
     }
     return TRUE;
 }
