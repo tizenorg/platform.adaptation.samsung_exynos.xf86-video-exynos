@@ -76,10 +76,13 @@ struct _SECVideoTv
     xRectangle   tv_rect;
     int          is_resized;
     unsigned int convert_id;
-};
+    unsigned int src_id;
+    SECLayerOutput output;
 
+};
+#if 0
 static Bool
-_secVieoTvCalSize (SECVideoTv* tv, int src_w, int src_h, int dst_w, int dst_h)
+_secVideoTvCalSize (SECVideoTv* tv, int src_w, int src_h, int dst_w, int dst_h)
 {
     float r;
 
@@ -105,7 +108,7 @@ _secVieoTvCalSize (SECVideoTv* tv, int src_w, int src_h, int dst_w, int dst_h)
 
     return TRUE;
 }
-
+#endif
 static SECVideoBuf*
 _secVideoTvGetOutBuffer (SECVideoTv* tv, int width, int height, Bool secure)
 {
@@ -211,14 +214,14 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
         secLayerFreezeUpdate (tv->layer, FALSE);
         tv->is_resized = 0;
     }
-
+#if 0
     if (tv->lpos == LAYER_LOWER1)
-        if (!_secVieoTvCalSize (tv, vbuf->width, vbuf->height,
+        if (!_secVideoTvCalSize (tv, vbuf->width, vbuf->height,
                                 rect->width, rect->height))
         {
             return 0;
         }
-
+#endif
     secLayerSetRect (tv->layer, &vbuf->crop, rect);
 
     ret = secLayerSetBuffer (tv->layer, vbuf);
@@ -284,9 +287,9 @@ secVideoTvConnect (ScrnInfoPtr pScrn, unsigned int id, SECLayerPos lpos)
         if (!secLayerSupport (pScrn, LAYER_OUTPUT_EXT, lpos, id))
         {
             /* used if id is not supported in case of lpos == LAYER_LOWER1. */
+            convert_id = FOURCC_SN12;
             tv->cvt = secCvtCreate (pScrn, CVT_OP_M2M);
             XDBG_GOTO_IF_FAIL (tv->cvt != NULL, fail_connect);
-
             secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
         }
         else
@@ -297,12 +300,13 @@ secVideoTvConnect (ScrnInfoPtr pScrn, unsigned int id, SECLayerPos lpos)
     }
 
     XDBG_DEBUG (MTVO, "id(%c%c%c%c), lpos(%d)!\n", FOURCC_STR (id), lpos);
-
+    tv->output = LAYER_OUTPUT_EXT;
     tv->pScrn = pScrn;
     tv->lpos = lpos;
     tv->outbuf_index = -1;
     tv->convert_id = convert_id;
     tv->outbuf_num = TVBUF_NUM;
+    tv->src_id = id;
 
     return tv;
 
@@ -317,7 +321,7 @@ fail_connect:
 }
 
 Bool
-secVideoTvResizeOutput (SECVideoTv* tv)
+secVideoTvResizeOutput (SECVideoTv* tv, xRectanglePtr src, xRectanglePtr dst)
 {
     if (tv == NULL)
         return FALSE;
@@ -336,11 +340,15 @@ secVideoTvResizeOutput (SECVideoTv* tv)
     if (tv->cvt)
     {
         secCvtDestroy (tv->cvt);
-        tv->cvt = secCvtCreate (tv->pScrn, CVT_OP_M2M);
-        XDBG_RETURN_VAL_IF_FAIL (tv->cvt != NULL, FALSE);
-        secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
+        tv->cvt = NULL;
     }
-//    secLayerHide(tv->layer);
+
+    if (!secVideoCanDirectDrawing (tv, src->width, src->height,
+                                   dst->width, dst->height))
+    {
+        secVideoTvReCreateConverter(tv);
+    }
+
     secLayerFreezeUpdate (tv->layer, TRUE);
     tv->is_resized = 1;
     return TRUE;
@@ -459,7 +467,10 @@ secVideoTvPutImage (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect, int csc
 
     XDBG_RETURN_VAL_IF_FAIL (vbuf->handles[0] > 0, 0);
     XDBG_RETURN_VAL_IF_FAIL (vbuf->pitches[0] > 0, 0);
-
+    XDBG_RETURN_VAL_IF_FAIL (rect->width > 0, 0);
+    XDBG_RETURN_VAL_IF_FAIL (rect->height > 0, 0);
+    XDBG_RETURN_VAL_IF_FAIL (vbuf->width > 0, 0);
+    XDBG_RETURN_VAL_IF_FAIL (vbuf->height > 0, 0);
     _secVideoTvLayerEnsure (tv);
     XDBG_RETURN_VAL_IF_FAIL (tv->layer != NULL, 0);
 
@@ -565,4 +576,91 @@ secVideoTvSetConvertFormat (SECVideoTv *tv, unsigned int convert_id)
     tv->convert_id = convert_id;
 
     XDBG_TRACE (MTVO, "convert_id(%c%c%c%c) \n", FOURCC_STR (convert_id));
+}
+
+Bool
+secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int dst_h)
+{
+    XDBG_RETURN_VAL_IF_FAIL(src_w != 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(src_h != 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(dst_w != 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(dst_h != 0, FALSE);
+    int ratio_w = 0;
+    int ratio_h = 0;
+    XDBG_DEBUG(MTVO, "tv(%p) src_w %d, src_h %d, dst_w %d, dst_h %d\n",
+               tv, src_w, src_h, dst_w, dst_h);
+    if (src_w >= dst_w)
+    {
+        ratio_w = src_w / dst_w;
+        if (ratio_w > 4)
+        {
+            XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (1/%d) < 1/4\n", ratio_w);
+            return FALSE;
+        }
+        XDBG_DEBUG(MTVO, "ratio_w = 1/%d\n", ratio_w);
+    }
+    else if (src_w < dst_w)
+    {
+        ratio_w = dst_w / src_w;
+        if (ratio_w > 16)
+        {
+            XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) > 16\n", ratio_w);
+            return FALSE;
+        }
+        XDBG_DEBUG(MTVO, "ratio_w = %d\n", ratio_w);
+    }
+
+    if (src_h >= dst_h)
+    {
+        ratio_h = src_h / dst_h;
+        if (ratio_h > 4)
+        {
+            XDBG_DEBUG(MTVO, "Can't direct draw ratio_h (1/%d) < 1/4\n", ratio_w);
+            return FALSE;
+        }
+        XDBG_DEBUG(MTVO, "ratio_h = 1/%d\n", ratio_h);
+    }
+    else if (src_h < dst_h)
+    {
+        ratio_h = dst_h / src_h;
+        if (ratio_h > 16)
+        {
+            XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) > 16\n", ratio_w);
+            return FALSE;
+        }
+        XDBG_DEBUG(MTVO, "ratio_h = %d\n", ratio_h);
+    }
+
+    if (ratio_w != ratio_h)
+    {
+        XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) != ratio_h (%d)\n", ratio_w, ratio_h);
+        return FALSE;
+    }
+
+    if (tv != NULL)
+    {
+        if (!secLayerSupport (tv->pScrn, tv->output, tv->lpos, tv->src_id))
+        {
+            XDBG_DEBUG(MTVO, "Can't direct draw. Layer not support. lpos(%d), src_id (%c%c%c%c)\n",
+            tv->lpos, FOURCC_STR(tv->src_id));
+            return FALSE;
+        }
+    }
+    XDBG_DEBUG(MTVO, "Support direct drawing\n");
+    return TRUE;
+}
+
+Bool
+secVideoTvReCreateConverter(SECVideoTv* tv)
+{
+    if (tv == NULL)
+        return FALSE;
+    if (tv->cvt)
+    {
+         secCvtDestroy (tv->cvt);
+    }
+    tv->cvt = secCvtCreate (tv->pScrn, CVT_OP_M2M);
+    XDBG_RETURN_VAL_IF_FAIL (tv->cvt != NULL, FALSE);
+    secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
+    return TRUE;
 }
