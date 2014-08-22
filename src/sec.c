@@ -130,8 +130,8 @@ static const OptionInfoRec SECOptions[] =
     { OPTION_CACHABLE, "cachable",   OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_SCANOUT,  "scanout",    OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_ACCEL2D,  "accel_2d",   OPTV_BOOLEAN, {0}, FALSE },
-    { OPTION_ACCEL2D,  "present",    OPTV_BOOLEAN, {0}, FALSE },
-    { OPTION_ACCEL2D,  "dri3",   	 OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_PRESENT,  "present",    OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_DRI3,	   "dri3",   	 OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_PARTIAL_UPDATE,  "partial_update",    OPTV_BOOLEAN, {0}, FALSE },
     { -1,              NULL,         OPTV_NONE,    {0}, FALSE }
 };
