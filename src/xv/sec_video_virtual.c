@@ -241,7 +241,7 @@ static Bool _secVirtualVideoEnsureOutBuffers (ScrnInfoPtr pScrn, SECPortPrivPtr 
 static void _secVirtualVideoWbCloseFunc (SECWb *wb, SECWbNotify noti, void *noti_data, void *user_data);
 
 static Bool
-secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *vbuf,xRectangle *srcrect, xRectangle *dstrect, int csc_range);
+secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *vbuf, int csc_range);
 static void _secCaptureCloseConverter (SECPortPrivPtr pPort);
 static void _secCaptureEnsureConverter (SECPortPrivPtr pPort);
 
@@ -1120,7 +1120,7 @@ _secVirtualStillCompositeExtLayers (SECPortPrivPtr pPort, int connector_type, Bo
             {
                 /*convert vbuf to RGB format*/
                  pPort->capture_dstbuf = NULL;
-                 if (secCaptureConvertImage (pPort, lower_buf, &src_rect, &src_rect, 0))
+                 if (secCaptureConvertImage (pPort, lower_buf, 0))
                  {
                      /* convertion in process */
                      pPort->wait_rgb_convert = TRUE;
@@ -2305,37 +2305,22 @@ _secCaptureCloseConverter (SECPortPrivPtr pPort)
 }
 
 static Bool
-secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf,xRectangle *srcrect, xRectangle *dstrect, int csc_range)
+secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf, int csc_range)
 {
      SECCvtProp src_prop = {0,}, dst_prop = {0,};
-     SECVideoBuf *outbuf = pPort->capture_dstbuf;
+     SECVideoBuf *outbuf;
 
      pPort->secure=0;
 
-     if (outbuf == NULL)
-     {
-         outbuf = secUtilAllocVideoBuffer (pPort->pScrn, FOURCC_RGB32,
-                                          dstrect->width, dstrect->height,
-                                          FALSE, FALSE, pPort->secure);
-     }
-    XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_convert);
-
-
-     if (!outbuf)
-         return FALSE;
-
-     _secCaptureEnsureConverter (pPort);
-     XDBG_GOTO_IF_FAIL (pPort->cvt2 != NULL, fail_to_convert);
-
      src_prop.id = inbuf->id;
-     src_prop.width = srcrect->width;
-     src_prop.height = dstrect->height;
-     src_prop.crop = *srcrect;
+     src_prop.width = inbuf->width;
+     src_prop.height = inbuf->height;
+     src_prop.crop = inbuf->crop;
 
      dst_prop.id = FOURCC_RGB32;
-     dst_prop.width = dstrect->width;
-     dst_prop.height = dstrect->height;
-     dst_prop.crop = *dstrect;
+     dst_prop.width = inbuf->width;
+     dst_prop.height = inbuf->height;
+     dst_prop.crop = inbuf->crop;
 
      dst_prop.degree = 0;
      dst_prop.hflip = 0;
@@ -2345,6 +2330,22 @@ secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf,xRectangle *s
 
      if (!secCvtEnsureSize (&src_prop, &dst_prop))
          goto fail_to_convert;
+
+    outbuf = pPort->capture_dstbuf;
+     if (outbuf == NULL)
+     {
+         outbuf = secUtilAllocVideoBuffer (pPort->pScrn, FOURCC_RGB32,
+                                          dst_prop.width, dst_prop.height,
+                                          FALSE, FALSE, pPort->secure);
+         outbuf->crop = dst_prop.crop;
+     }
+    XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_convert);
+
+     if (!outbuf)
+         return FALSE;
+
+     _secCaptureEnsureConverter (pPort);
+     XDBG_GOTO_IF_FAIL (pPort->cvt2 != NULL, fail_to_convert);
 
      if (!secCvtSetProperpty (pPort->cvt2, &src_prop, &dst_prop))
          goto fail_to_convert;
