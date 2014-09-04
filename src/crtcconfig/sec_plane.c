@@ -356,9 +356,9 @@ _check_hw_restriction (ScrnInfoPtr pScrn, int crtc_id, int buf_w, int buf_h,
         return FALSE;
     }
 
-    if (buf_h < MIN_HEIGHT || buf_h % 2)
+    if (buf_h < MIN_HEIGHT)
     {
-        XDBG_TRACE (MPLN, "hide: buf_h(%d) not 2's multiple or less than %d\n",
+        XDBG_TRACE (MPLN, "hide: buf_h(%d) less than %d\n",
                     buf_h, MIN_HEIGHT);
         return FALSE;
     }

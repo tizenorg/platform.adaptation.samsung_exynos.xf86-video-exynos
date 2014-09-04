@@ -209,11 +209,6 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
     XDBG_DEBUG (MTVO, "rect (%d,%d %dx%d) \n",
                 rect->x, rect->y, rect->width, rect->height);
 
-    if (tv->is_resized == 1)
-    {
-        secLayerFreezeUpdate (tv->layer, FALSE);
-        tv->is_resized = 0;
-    }
 #if 0
     if (tv->lpos == LAYER_LOWER1)
         if (!_secVideoTvCalSize (tv, vbuf->width, vbuf->height,
@@ -223,6 +218,12 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
         }
 #endif
     secLayerSetRect (tv->layer, &vbuf->crop, rect);
+
+    if (tv->is_resized == 1)
+    {
+        secLayerFreezeUpdate (tv->layer, FALSE);
+        tv->is_resized = 0;
+    }
 
     ret = secLayerSetBuffer (tv->layer, vbuf);
 
@@ -646,6 +647,14 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
             return FALSE;
         }
     }
+#if 1
+    /* FIXME: Using IPP converter if we haven't native frame size */
+    if (ratio_w > 1 || ratio_h > 1)
+    {
+        XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) && ratio_h (%d) != 1\n", ratio_w, ratio_h);
+        return FALSE;
+    }
+#endif
     XDBG_DEBUG(MTVO, "Support direct drawing\n");
     return TRUE;
 }
