@@ -46,6 +46,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CVT_BUF_MAX    6
 #endif
 
+static Bool can_pause = TRUE;
+
 typedef struct _SECCvtFuncData
 {
     CvtFunc  func;
@@ -85,6 +87,7 @@ struct _SECCvt
 #endif
 
     Bool          started;
+    Bool          paused;
     Bool          first_event;
 
     struct xorg_list   link;
@@ -694,7 +697,7 @@ secCvtGetOp (SECCvt *cvt)
 Bool
 secCvtSetProperpty (SECCvt *cvt, SECCvtProp *src, SECCvtProp *dst)
 {
-    if (cvt->started)
+    if (cvt->started && !cvt->paused)
         return TRUE;
 
     struct drm_exynos_ipp_property property;
@@ -873,6 +876,20 @@ secCvtConvert (SECCvt *cvt, SECVideoBuf *src, SECVideoBuf *dst)
 
         cvt->started = TRUE;
     }
+    else if (cvt->paused)
+    {
+        struct drm_exynos_ipp_cmd_ctrl ctrl = {0,};
+
+        ctrl.prop_id = cvt->prop_id;
+        ctrl.ctrl = IPP_CTRL_RESUME;
+
+        if (!secDrmIppCmdCtrl (cvt->pScrn, &ctrl))
+            goto fail_to_convert;
+
+        XDBG_TRACE (MCVT, "cvt(%p) resume.\n", cvt);
+
+        cvt->paused = FALSE;
+    }
 
     dst->dirty = TRUE;
 
@@ -1017,4 +1034,37 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
 
     _secCvtDequeued (cvt, EXYNOS_DRM_OPS_SRC, buf_idx[EXYNOS_DRM_OPS_SRC]);
     _secCvtDequeued (cvt, EXYNOS_DRM_OPS_DST, buf_idx[EXYNOS_DRM_OPS_DST]);
+}
+
+Bool
+secCvtPause (SECCvt *cvt)
+{
+    if (!can_pause)
+    {
+        XDBG_DEBUG (MCVT, "IPP not support pause-resume mode\n");
+        return FALSE;
+    }
+    XDBG_RETURN_VAL_IF_FAIL (cvt != NULL, FALSE);
+    struct drm_exynos_ipp_cmd_ctrl ctrl = {0,};
+
+    ctrl.prop_id = cvt->prop_id;
+    ctrl.ctrl = IPP_CTRL_PAUSE;
+
+    if (!secDrmIppCmdCtrl (cvt->pScrn, &ctrl))
+        goto fail_to_pause;
+
+    XDBG_TRACE (MCVT, "cvt(%p) pause.\n", cvt);
+
+    cvt->paused = TRUE;
+
+    return TRUE;
+
+fail_to_pause:
+
+    XDBG_ERROR (MCVT, "cvt(%p) pause error.\n", cvt);
+    can_pause = FALSE;
+
+//    _secCvtStop (cvt);
+
+    return FALSE;
 }
