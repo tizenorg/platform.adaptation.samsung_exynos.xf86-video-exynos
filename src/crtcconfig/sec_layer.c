@@ -308,7 +308,10 @@ _secLayerWatchVblank (SECLayer *layer)
     else
 #endif //NO_CRTC_MODE
     if (pSec->isLcdOff)
+    {
+        XDBG_DEBUG(MLYR, "pSec->isLcdOff (%d)\n", pSec->isLcdOff);
         return;
+    }
 
     pipe = secDisplayCrtcPipe (layer->pScrn, _GetCrtcID (layer));
 
@@ -492,7 +495,11 @@ secLayerCreate (ScrnInfoPtr pScrn, SECLayerOutput output, SECLayerPos lpos)
     }
 
     layer->ref_cnt = 1;
+    SECPtr pSec;
+    SECModePtr pSecMode;
 
+    pSec = SECPTR (pScrn);
+    pSecMode = pSec->pSecMode;
     xorg_list_init (&layer->noti_data);
 
     _secLayerInitList ();
@@ -623,7 +630,7 @@ secLayerHide (SECLayer *layer)
     XDBG_RETURN_IF_FAIL (layer != NULL);
 
     pSecMode = (SECModePtr) SECPTR (layer->pScrn)->pSecMode;
-
+#if 0
     if (!layer->visible || layer->ref_cnt > 1)
         return;
 
@@ -633,7 +640,7 @@ secLayerHide (SECLayer *layer)
         XDBG_TRACE (MLYR, "layer(%p) hidden. \n", layer);
         return;
     }
-
+#endif
     if (!secPlaneHide (layer->plane_id))
         return;
 
