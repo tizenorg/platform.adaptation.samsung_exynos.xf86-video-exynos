@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_video.h"
 #include "sec_wb.h"
 #include "sec_util.h"
+#include "sec_converter.h"
 #if HAVE_UDEV
 #include <libudev.h>
 #endif

@@ -133,8 +133,26 @@ _secVideoTvGetOutBuffer (SECVideoTv* tv, int width, int height, Bool secure)
 
             if (tv->outbuf[i] && !VBUF_IS_CONVERTING (tv->outbuf[i]) && !tv->outbuf[i]->showing)
             {
-                tv->outbuf_index = i;
-                return tv->outbuf[i];
+                if (tv->outbuf[i]->width == width &&
+                    tv->outbuf[i]->id == tv->convert_id &&
+                    tv->outbuf[i]->height == height)
+                {
+                    tv->outbuf_index = i;
+                    return tv->outbuf[i];
+                }
+                else
+                {
+                    secUtilVideoBufferUnref (tv->outbuf[i]);
+                    SECPtr pSec = SECPTR (tv->pScrn);
+                    tv->outbuf[i] = secUtilAllocVideoBuffer (tv->pScrn, tv->convert_id, width, height,
+                                                             (pSec->scanout)?TRUE:FALSE, TRUE, secure);
+                    XDBG_RETURN_VAL_IF_FAIL (tv->outbuf[i] != NULL, NULL);
+
+                    XDBG_DEBUG (MTVO, "outbuf(%p, %c%c%c%c)\n", tv->outbuf[i], FOURCC_STR (tv->convert_id));
+
+                    tv->outbuf_index = i;
+                    return tv->outbuf[i];
+                }
             }
         }
         else
@@ -209,11 +227,6 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
     XDBG_DEBUG (MTVO, "rect (%d,%d %dx%d) \n",
                 rect->x, rect->y, rect->width, rect->height);
 
-    if (tv->is_resized == 1)
-    {
-        secLayerFreezeUpdate (tv->layer, FALSE);
-        tv->is_resized = 0;
-    }
 #if 0
     if (tv->lpos == LAYER_LOWER1)
         if (!_secVideoTvCalSize (tv, vbuf->width, vbuf->height,
@@ -222,15 +235,36 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
             return 0;
         }
 #endif
-    secLayerSetRect (tv->layer, &vbuf->crop, rect);
+    xRectangle src_rect, dst_rect;
+    secLayerGetRect (tv->layer, &src_rect, &dst_rect);
+
+    if (tv->is_resized == 1)
+    {
+        secLayerFreezeUpdate (tv->layer, FALSE);
+//        secLayerHide (tv->layer);
+        tv->is_resized = 0;
+    }
+
+    if (memcmp (&vbuf->crop, &src_rect, sizeof (xRectangle)) ||
+        memcmp (rect, &dst_rect, sizeof (xRectangle)))
+    {
+        secLayerFreezeUpdate (tv->layer, TRUE);
+        secLayerSetRect (tv->layer, &vbuf->crop, rect);
+        secLayerFreezeUpdate (tv->layer, FALSE);
+    }
 
     ret = secLayerSetBuffer (tv->layer, vbuf);
 
     if (ret == 0)
         return 0;
-
-    secLayerShow (tv->layer);
-
+    if (!secLayerIsVisible (tv->layer))
+    {
+        secLayerShow (tv->layer);
+    }
+    else
+    {
+        XDBG_DEBUG(MTVO,"tv->layer(%p) is not visible\n", tv->layer);
+    }
     return ret;
 }
 
@@ -326,27 +360,29 @@ secVideoTvResizeOutput (SECVideoTv* tv, xRectanglePtr src, xRectanglePtr dst)
     if (tv == NULL)
         return FALSE;
 
-    if (tv->outbuf)
-    {
-        int i;
-        for (i = 0; i < tv->outbuf_num; i++)
-            if (tv->outbuf[i])
-                secUtilVideoBufferUnref (tv->outbuf[i]);
-
-        free (tv->outbuf);
-        tv->outbuf = NULL;
-    }
-
-    if (tv->cvt)
-    {
-        secCvtDestroy (tv->cvt);
-        tv->cvt = NULL;
-    }
-
     if (!secVideoCanDirectDrawing (tv, src->width, src->height,
                                    dst->width, dst->height))
     {
         secVideoTvReCreateConverter(tv);
+    }
+    else
+    {
+        if (tv->cvt)
+        {
+           secCvtDestroy (tv->cvt);
+        }
+    }
+
+    if (tv->outbuf)
+    {
+        int i;
+        for (i = 0; i < tv->outbuf_num; i++)
+            if (tv->outbuf[i] && !VBUF_IS_CONVERTING(tv->outbuf[i]) && !tv->outbuf[i]->showing)
+            {
+                secUtilVideoBufferUnref (tv->outbuf[i]);
+                tv->outbuf[i] = NULL;
+            }
+        tv->outbuf_index = -1;
     }
 
     secLayerFreezeUpdate (tv->layer, TRUE);
@@ -522,18 +558,30 @@ secVideoTvPutImage (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect, int csc
         dst_prop.csc_range = csc_range;
 
         if (!secCvtEnsureSize (&src_prop, &dst_prop))
+        {
+            XDBG_DEBUG(MTVO, "Can't ensure size\n");
             return 0;
+        }
 
         outbuf = _secVideoTvGetOutBuffer (tv, dst_prop.width, dst_prop.height, vbuf->secure);
         if (!outbuf)
+        {
+            XDBG_DEBUG(MTVO, "Can't get outbuf\n");
             return 0;
+        }
         outbuf->crop = dst_prop.crop;
 
         if (!secCvtSetProperpty (tv->cvt, &src_prop, &dst_prop))
+        {
+            XDBG_DEBUG(MTVO, "Can't set cvt property\n");
             return 0;
+        }
 
         if (!secCvtConvert (tv->cvt, vbuf, outbuf))
+        {
+            XDBG_DEBUG(MTVO, "Can't start cvt\n");
             return 0;
+        }
 
         XDBG_TRACE (MTVO, "'%c%c%c%c' %dx%d (%d,%d %dx%d) => '%c%c%c%c' %dx%d (%d,%d %dx%d) convert. rect(%d,%d %dx%d)\n",
                     FOURCC_STR (vbuf->id), vbuf->width, vbuf->height,
@@ -585,6 +633,10 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
     XDBG_RETURN_VAL_IF_FAIL(src_h != 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_w != 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_h != 0, FALSE);
+#if 1
+    /* :TODO. Need Fix flickering in direct draw case */
+    return FALSE;
+#endif
     int ratio_w = 0;
     int ratio_h = 0;
     XDBG_DEBUG(MTVO, "tv(%p) src_w %d, src_h %d, dst_w %d, dst_h %d\n",
@@ -646,6 +698,14 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
             return FALSE;
         }
     }
+#if 0
+    /* FIXME: Using IPP converter if we haven't native frame size */
+    if (ratio_w > 1 || ratio_h > 1)
+    {
+        XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) && ratio_h (%d) != 1\n", ratio_w, ratio_h);
+        return FALSE;
+    }
+#endif
     XDBG_DEBUG(MTVO, "Support direct drawing\n");
     return TRUE;
 }

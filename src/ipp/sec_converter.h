@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <fbdevhw.h>
 #include "common.h"
+#include <xf86str.h>
 
 typedef struct _SECCvt SECCvt;
 
@@ -86,5 +87,6 @@ Bool     secCvtAddCallback    (SECCvt *cvt, CvtFunc func, void *data);
 void     secCvtRemoveCallback (SECCvt *cvt, CvtFunc func, void *data);
 
 void     secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error);
+Bool     secCvtPause (SECCvt *cvt);
 
 #endif  /* __SEC_CONVERTER_H__ */
