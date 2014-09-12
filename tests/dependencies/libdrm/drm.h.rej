@@ -1,0 +1,10 @@
+--- include/drm/drm.h
++++ include/drm/drm.h
+@@ -755,6 +755,7 @@
+  };
+ 
+  #define DRM_CAP_DUMB_BUFFER 0x1
++#define DRM_CAP_HIGH_CRTC   0x2
+ 
+  /* typedef area */
+  typedef struct drm_clip_rect drm_clip_rect_t;

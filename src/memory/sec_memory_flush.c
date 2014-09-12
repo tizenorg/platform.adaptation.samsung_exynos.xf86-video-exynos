@@ -42,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <X11/extensions/dpmsconst.h>
 #include "sec_util.h"
-#include "sec_dpms.h"
+//#include "sec_dpms.h"
 #include "sec_memory_flush.h"
 
 extern CallbackListPtr DPMSCallback;

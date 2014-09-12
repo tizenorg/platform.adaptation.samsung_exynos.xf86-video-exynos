@@ -1,0 +1,10 @@
+--- include/drm/radeon_drm.h
++++ include/drm/radeon_drm.h
+@@ -906,6 +907,7 @@
+ /* The second dword of RADEON_CHUNK_ID_FLAGS is a uint32 that sets the ring id */
+ #define RADEON_CS_RING_GFX          0
+ #define RADEON_CS_RING_COMPUTE      1
++#define RADEON_CS_RING_DMA          2
+ /* The third dword of RADEON_CHUNK_ID_FLAGS is a uint32 that sets the priority */
+ /* 0 = normal, + = higher priority, - = lower priority */
+ struct drm_radeon_cs_ring_priority {
