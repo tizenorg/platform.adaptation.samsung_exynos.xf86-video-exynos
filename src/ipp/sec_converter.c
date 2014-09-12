@@ -883,8 +883,8 @@ secCvtConvert (SECCvt *cvt, SECVideoBuf *src, SECVideoBuf *dst)
         ctrl.prop_id = cvt->prop_id;
         ctrl.ctrl = IPP_CTRL_RESUME;
 
-        if (!secDrmIppCmdCtrl (cvt->pScrn, &ctrl))
-            goto fail_to_convert;
+        XDBG_GOTO_IF_FAIL(secDrmIppCmdCtrl (cvt->pScrn, &ctrl),
+                          fail_to_convert);
 
         XDBG_TRACE (MCVT, "cvt(%p) resume.\n", cvt);
 
@@ -905,7 +905,7 @@ fail_to_convert:
         free (src_cbuf);
     if (dst_cbuf)
         free (dst_cbuf);
-
+    can_pause = FALSE;
     _secCvtStop (cvt);
 
     return FALSE;
@@ -1039,19 +1039,24 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
 Bool
 secCvtPause (SECCvt *cvt)
 {
+    XDBG_RETURN_VAL_IF_FAIL (cvt != NULL, FALSE);
     if (!can_pause)
     {
         XDBG_DEBUG (MCVT, "IPP not support pause-resume mode\n");
         return FALSE;
     }
-    XDBG_RETURN_VAL_IF_FAIL (cvt != NULL, FALSE);
+    if (cvt->paused)
+    {
+        XDBG_WARNING (MCVT, "IPP already in pause state\n");
+        return TRUE;
+    }
     struct drm_exynos_ipp_cmd_ctrl ctrl = {0,};
 
     ctrl.prop_id = cvt->prop_id;
     ctrl.ctrl = IPP_CTRL_PAUSE;
 
-    if (!secDrmIppCmdCtrl (cvt->pScrn, &ctrl))
-        goto fail_to_pause;
+    XDBG_GOTO_IF_FAIL(secDrmIppCmdCtrl (cvt->pScrn, &ctrl),
+                      fail_to_pause);
 
     XDBG_TRACE (MCVT, "cvt(%p) pause.\n", cvt);
 
@@ -1067,4 +1072,14 @@ fail_to_pause:
 //    _secCvtStop (cvt);
 
     return FALSE;
+}
+
+CARD32
+secCvtGetStamp (SECCvt *cvt)
+{
+    if (cvt == NULL)
+    {
+        return 0;
+    }
+    return cvt->stamp;
 }

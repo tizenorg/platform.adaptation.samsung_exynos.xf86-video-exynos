@@ -321,13 +321,28 @@ secVideoTvResizeOutput (SECVideoTv* tv, xRectanglePtr src, xRectanglePtr dst)
     if (!secVideoCanDirectDrawing (tv, src->width, src->height,
                                    dst->width, dst->height))
     {
-        secVideoTvReCreateConverter(tv);
+        if (tv->cvt)
+        {
+            XDBG_DEBUG(MTVO, "Pause converter\n");
+            if (!secCvtPause(tv->cvt))
+            {
+                XDBG_ERROR(MTVO,"Can't pause ipp converter\n");
+                secVideoTvReCreateConverter(tv);
+            }
+        }
+        else
+        {
+            XDBG_DEBUG(MTVO, "Create new converter tasks\n");
+            secVideoTvReCreateConverter(tv);
+        }
     }
     else
     {
         if (tv->cvt)
         {
+           XDBG_DEBUG(MTVO, "Driver can use direct drawing way.\n");
            secCvtDestroy (tv->cvt);
+           tv->cvt = NULL;
         }
     }
 
@@ -591,7 +606,6 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
     XDBG_RETURN_VAL_IF_FAIL(src_h > 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_w > 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_h > 0, FALSE);
-
     int ratio_w = 0;
     int ratio_h = 0;
     XDBG_DEBUG(MTVO, "tv(%p) src_w %d, src_h %d, dst_w %d, dst_h %d\n",
