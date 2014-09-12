@@ -87,5 +87,6 @@ void     secCvtRemoveCallback (SECCvt *cvt, CvtFunc func, void *data);
 
 void     secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error);
 Bool     secCvtPause (SECCvt *cvt);
+CARD32   secCvtGetStamp (SECCvt *cvt);
 
 #endif  /* __SEC_CONVERTER_H__ */

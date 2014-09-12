@@ -1527,11 +1527,10 @@ static void
 _secVideoPunchDrawable (SECPortPrivPtr pPort)
 {
     PixmapPtr pPixmap = _getPixmap (pPort->d.pDraw);
-    SECPtr pSec = SECPTR (pPort->pScrn);
 
+    SECPtr pSec = SECPTR (pPort->pScrn);
     if (pPort->drawing != ON_FB || !pSec->pVideoPriv->video_punch)
         return;
-
     if (!pPort->punched)
     {
         secExaPrepareAccess (pPixmap, EXA_PREPARE_DEST);
@@ -2711,12 +2710,22 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
 
         if (pPort->tv && memcmp (&pPort->d.dst, &pPort->old_d.dst, sizeof (xRectangle)))
         {
+            XDBG_DEBUG(MTVO, "Detect frame changes. old frame: (x%d,y%d) (w%d-h%d)\n",
+                       pPort->old_d.dst.x, pPort->old_d.dst.y,
+                       pPort->old_d.dst.width, pPort->old_d.dst.height);
+            XDBG_DEBUG(MTVO, "==> new frame: (x%d,y%d) (w%d-h%d)\n",
+                       pPort->d.dst.x, pPort->d.dst.y,
+                       pPort->d.dst.width, pPort->d.dst.height);
+            SECCvt *old_tv_cvt = secVideoTvGetConverter (pPort->tv);
             if (secVideoTvResizeOutput (pPort->tv, &pPort->d.src, &pPort->d.dst) == TRUE)
             {
-                SECCvt *tv_cvt = secVideoTvGetConverter (pPort->tv);
+                SECCvt *new_tv_cvt = secVideoTvGetConverter (pPort->tv);
                 if (tv_cvt != NULL)
                 {
-                    secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
+                    if (secCvtGetStamp (new_tv_cvt) != secCvtGetStamp(old_tv_cvt))
+                    {
+                        secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
+                    }
                 }
             }
             else
