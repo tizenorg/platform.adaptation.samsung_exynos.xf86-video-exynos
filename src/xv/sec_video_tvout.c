@@ -522,27 +522,27 @@ secVideoTvPutImage (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect, int csc
 
         if (!secCvtEnsureSize (&src_prop, &dst_prop))
         {
-            XDBG_DEBUG(MTVO, "Can't ensure size\n");
+            XDBG_ERROR(MTVO, "Can't ensure size\n");
             return 0;
         }
 
         outbuf = _secVideoTvGetOutBuffer (tv, dst_prop.width, dst_prop.height, vbuf->secure);
         if (!outbuf)
         {
-            XDBG_DEBUG(MTVO, "Can't get outbuf\n");
+            XDBG_ERROR(MTVO, "Can't get outbuf\n");
             return 0;
         }
         outbuf->crop = dst_prop.crop;
 
         if (!secCvtSetProperpty (tv->cvt, &src_prop, &dst_prop))
         {
-            XDBG_DEBUG(MTVO, "Can't set cvt property\n");
+            XDBG_ERROR(MTVO, "Can't set cvt property\n");
             return 0;
         }
 
         if (!secCvtConvert (tv->cvt, vbuf, outbuf))
         {
-            XDBG_DEBUG(MTVO, "Can't start cvt\n");
+            XDBG_ERROR(MTVO, "Can't start cvt\n");
             return 0;
         }
 
