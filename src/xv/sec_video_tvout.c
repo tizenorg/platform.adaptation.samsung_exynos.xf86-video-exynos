@@ -587,10 +587,10 @@ secVideoTvSetConvertFormat (SECVideoTv *tv, unsigned int convert_id)
 Bool
 secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int dst_h)
 {
-    XDBG_RETURN_VAL_IF_FAIL(src_w != 0, FALSE);
-    XDBG_RETURN_VAL_IF_FAIL(src_h != 0, FALSE);
-    XDBG_RETURN_VAL_IF_FAIL(dst_w != 0, FALSE);
-    XDBG_RETURN_VAL_IF_FAIL(dst_h != 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(src_w > 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(src_h > 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(dst_w > 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(dst_h > 0, FALSE);
 #if 1
     /* :TODO. Need Fix flickering in direct draw case */
     return FALSE;
