@@ -42,6 +42,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define IS_ZEROCOPY(id)     ((C(id,0) == 'S') || id == FOURCC_ITLV)
 #define IS_RGB(id)           (id == FOURCC_RGB565 || id == FOURCC_RGB32 || \
                               id == FOURCC_SR16 || id == FOURCC_SR32)
+#define IS_YUV(id)           (id == FOURCC_Y444 || id == FOURCC_S420    || \
+                              id == FOURCC_SUYV || id == FOURCC_SYVY)
+
+
 
 /* Specific format for S.LSI
  * 2x2 subsampled Cr:Cb plane 64x32 macroblocks

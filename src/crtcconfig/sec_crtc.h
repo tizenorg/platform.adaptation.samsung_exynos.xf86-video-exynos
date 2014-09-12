@@ -163,6 +163,8 @@ void      secCrtcRemoveFlipPixmap (xf86CrtcPtr pCrtc);
 
 void    secCrtcCountFps(xf86CrtcPtr pCrtc);
 
+xf86CrtcPtr secCrtcGetByID(ScrnInfoPtr pScrn, int crtc_id);
+
 static inline int
 secCrtcID(SECCrtcPrivPtr pCrtcPriv)
 {

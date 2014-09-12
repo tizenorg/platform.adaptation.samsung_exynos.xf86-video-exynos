@@ -133,7 +133,8 @@ Bool secUtilConvertImage (pixman_op_t op, uchar *srcbuf, uchar *dstbuf,
                           int dw, int dh, xRectangle *dr,
                           RegionPtr dst_clip_region,
                           int rotate, int hflip, int vflip);
-void secUtilConvertBos (ScrnInfoPtr pScrn,
+
+void secUtilConvertBos (ScrnInfoPtr pScrn, int src_id,
                         tbm_bo src_bo, int sw, int sh, xRectangle *sr, int sstride,
                         tbm_bo dst_bo, int dw, int dh, xRectangle *dr, int dstride,
                         Bool composite, int rotate);
@@ -182,6 +183,8 @@ void         secUtilRemoveFreeVideoBufferFunc  (SECVideoBuf *vbuf, FreeVideoBufF
 #define VBUF_IS_VALID(v)            secUtilIsVbufValid(v)
 #define VSTMAP(v)            ((v)?(v)->stamp:0)
 #define VBUF_IS_CONVERTING(v)       (!xorg_list_is_empty (&((v)->convert_info)))
+
+int findActiveConnector (ScrnInfoPtr pScrn);
 
 /* for debug */
 char*  secUtilDumpVideoBuffer (char *reply, int *len);

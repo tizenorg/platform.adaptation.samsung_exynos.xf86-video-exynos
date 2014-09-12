@@ -1353,11 +1353,11 @@ _secVideoTvoutCvtCallback (SECCvt *cvt,
 
     XDBG_DEBUG (MVDO, "######################## \n");
     XDBG_DEBUG (MVDO, "cvt(%p) src(%p) dst(%p)\n", cvt, src, dst);
-
+#if 0
     if (pPort->wait_vbuf != src)
         XDBG_WARNING (MVDO, "wait_vbuf(%p) != src(%p). \n",
                       pPort->wait_vbuf, src);
-
+#endif
     pPort->wait_vbuf = NULL;
 
     XDBG_DEBUG (MVDO, "########################.. \n");
@@ -1374,11 +1374,11 @@ _secVideoLayerNotifyFunc (SECLayer *layer, int type, void *type_data, void *data
 
     XDBG_RETURN_IF_FAIL (pPort != NULL);
     XDBG_RETURN_IF_FAIL (VBUF_IS_VALID (vbuf));
-
+#if 0
     if (pPort->wait_vbuf != vbuf)
         XDBG_WARNING (MVDO, "wait_vbuf(%p) != vbuf(%p). \n",
                       pPort->wait_vbuf, vbuf);
-
+#endif
     XDBG_DEBUG (MVBUF, "now_showing(%p). \n", vbuf);
 
     pPort->wait_vbuf = NULL;
@@ -1520,7 +1520,6 @@ _secVideoCalculateSize (SECPortPrivPtr pPort)
     pPort->out_width = dst_prop.width;
     pPort->out_height = dst_prop.height;
     pPort->out_crop = dst_prop.crop;
-
     return TRUE;
 }
 
@@ -1530,21 +1529,29 @@ _secVideoPunchDrawable (SECPortPrivPtr pPort)
     PixmapPtr pPixmap = _getPixmap (pPort->d.pDraw);
     SECPtr pSec = SECPTR (pPort->pScrn);
 
-    if (pPort->drawing != ON_FB || !pSec->pVideoPriv->video_punch)
+    if (pPort->drawing != ON_FB)
+    {
+        XDBG_DEBUG (MVDO, "pPort->drawing (%d), pSec->pVideoPriv->video_punch (%d)\n",
+                    pPort->drawing, pSec->pVideoPriv->video_punch);
         return;
+    }
 
     if (!pPort->punched)
     {
+        DamageRegionAppend(pPort->d.pDraw, pPort->d.clip_boxes);
         secExaPrepareAccess (pPixmap, EXA_PREPARE_DEST);
         if (pPixmap->devPrivate.ptr)
             memset (pPixmap->devPrivate.ptr, 0,
                     pPixmap->drawable.width * pPixmap->drawable.height * 4);
         secExaFinishAccess (pPixmap, EXA_PREPARE_DEST);
+        DamageRegionProcessPending(pPort->d.pDraw);
         XDBG_TRACE (MVDO, "Punched (%dx%d) %p. \n",
                     pPixmap->drawable.width, pPixmap->drawable.height,
                     pPixmap->devPrivate.ptr);
         pPort->punched = TRUE;
+#if 0
         DamageDamageRegion (pPort->d.pDraw, pPort->d.clip_boxes);
+#endif
     }
 }
 
@@ -1760,10 +1767,16 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
     Bool first_put = FALSE;
 
     if (!(output & OUTPUT_EXT))
+    {
+        XDBG_DEBUG(MTVO, "!(output (%d) & OUTPUT_EXT)\n", output);
         return FALSE;
+    }
 
     if (pPort->skip_tvout)
+    {
+        XDBG_DEBUG(MTVO, "pPort->skip_tvout (%d)\n", pPort->skip_tvout);
         return FALSE;
+    }
 
     if (!_secVideoGrabTvout(pPort))
         goto fail_to_put_tvout;
@@ -1801,6 +1814,16 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
         }
 
         tv_cvt = secVideoTvGetConverter (pPort->tv);
+
+        if (tv_cvt == NULL)
+        {
+            if (!secVideoCanDirectDrawing (NULL, pPort->d.src.width, pPort->d.src.height,
+                                           pPort->d.dst.width, pPort->d.dst.height))
+            {
+                XDBG_GOTO_IF_FAIL (secVideoTvReCreateConverter (pPort->tv),
+                                   fail_to_put_tvout);
+            }
+        }
         if (tv_cvt)
         {
             /* HDMI    : SN12
@@ -1836,7 +1859,11 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
                     secVideoTvSetConvertFormat (pPort->tv, FOURCC_RGB32);
             }
             else
+            {
+#if 0
                 secVideoTvSetConvertFormat (pPort->tv, FOURCC_SN12);
+#endif
+            }
 
             secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
         }
@@ -1866,7 +1893,7 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
                         sub, inbuf->stamp,
                         inbuf->keys[0], inbuf->keys[1], inbuf->keys[2]);
         }
-
+        XDBG_DEBUG (MVDO, "pPort->wait_vbuf (%d) skip_frame\n", pPort->wait_vbuf);
         return FALSE;
     }
     else if (pSec->pVideoPriv->video_fps)
@@ -2500,7 +2527,9 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     }
 
     XDBG_TRACE (MVDO, "======================================= \n");
-
+    XDBG_DEBUG(MVDO, "src:(x%d,y%d w%d-h%d), dst:(x%d,y%d w%d-h%d)\n",
+               src_x, src_y, src_w, src_h, dst_x, dst_y, dst_w, dst_h);
+    XDBG_DEBUG(MVDO, "image size:(w%d-h%d) fourcc(%c%c%c%c)\n", width, height, FOURCC_STR(id));
     pPort->pScrn = pScrn;
     pPort->d.id = id;
     pPort->d.buf = buf;
@@ -2563,6 +2592,11 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
 
     old_drawing = pPort->drawing;
     pPort->drawing = _secVideodrawingOn (pPort);
+    if (pDraw)
+    {
+        XDBG_DEBUG(MVDO, "pixmap:(x%d,y%d w%d-h%d) on:%d\n",
+                   pDraw->x, pDraw->y, pDraw->width, pDraw->height, pPort->drawing);
+    }
     if (old_drawing != pPort->drawing)
     {
         _secVideoCloseConverter (pPort);
@@ -2654,16 +2688,44 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
         _secVideoCloseConverter (pPort);
         _secVideoCloseOutBuffer (pPort, FALSE);
         pPort->inbuf_is_fb = FALSE;
-        if (pPort->tv)
+    }
+
+    if (pPort->tv)
+    {
+        SECCvt *tv_cvt = secVideoTvGetConverter (pPort->tv);
+        if (pPort->d.id != pPort->old_d.id ||
+            pPort->d.width != pPort->old_d.width ||
+            pPort->d.height != pPort->old_d.height ||
+            memcmp (&pPort->d.src, &pPort->old_d.src, sizeof (xRectangle)))
         {
-            if (secVideoTvResizeOutput (pPort->tv) == TRUE)
+            _secVideoCloseInBuffer (pPort);
+            pPort->inbuf_is_fb = FALSE;
+        }
+        else if (tv_cvt != NULL)
+        {
+            SECCvtProp dst_prop;
+            secCvtGetProperpty (tv_cvt, NULL, &dst_prop);
+
+            if (dst_prop.degree != pPort->hw_rotate ||
+                dst_prop.hflip != pPort->hflip ||
+                dst_prop.vflip != pPort->vflip ||
+                dst_prop.secure != pPort->secure ||
+                dst_prop.csc_range != pPort->csc_range)
             {
-                if (secVideoTvGetConverter(pPort->tv) != NULL)
+                _secVideoCloseInBuffer (pPort);
+                pPort->inbuf_is_fb = FALSE;
+            }
+        }
+
+        if (pPort->tv && memcmp (&pPort->d.dst, &pPort->old_d.dst, sizeof (xRectangle)))
+        {
+            if (secVideoTvResizeOutput (pPort->tv, &pPort->d.src, &pPort->d.dst) == TRUE)
+            {
+                SECCvt *tv_cvt = secVideoTvGetConverter (pPort->tv);
+                if (tv_cvt != NULL)
                 {
-                    secCvtAddCallback (secVideoTvGetConverter(pPort->tv),
-                                       _secVideoTvoutCvtCallback, pPort);
+                    secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
                 }
-                pPort->wait_vbuf = NULL;
             }
             else
             {
@@ -2671,6 +2733,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
                 pPort->tv = NULL;
             }
             pPort->punched = FALSE;
+            pPort->wait_vbuf = NULL;
         }
     }
 
@@ -3072,7 +3135,7 @@ secVideoScreenRotate (ScrnInfoPtr pScrn, int degree)
         XDBG_RETURN_IF_FAIL (rot_vbuf != NULL);
         rot_vbuf->crop = rot_rect;
 
-        secUtilConvertBos (pScrn,
+        secUtilConvertBos (pScrn, 0,
                            old_vbuf->bo[0], old_vbuf->width, old_vbuf->height, &old_vbuf->crop, old_vbuf->width*4,
                            rot_vbuf->bo[0], rot_vbuf->width, rot_vbuf->height, &rot_vbuf->crop, rot_vbuf->width*4,
                            FALSE, degree_diff);
