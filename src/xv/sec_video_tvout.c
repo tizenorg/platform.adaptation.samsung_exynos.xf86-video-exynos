@@ -641,12 +641,6 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
         XDBG_DEBUG(MTVO, "ratio_h = %d\n", ratio_h);
     }
 
-    if (ratio_w != ratio_h)
-    {
-        XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) != ratio_h (%d)\n", ratio_w, ratio_h);
-        return FALSE;
-    }
-
     if (tv != NULL)
     {
         if (!secLayerSupport (tv->pScrn, tv->output, tv->lpos, tv->src_id))
