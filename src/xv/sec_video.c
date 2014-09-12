@@ -1529,29 +1529,21 @@ _secVideoPunchDrawable (SECPortPrivPtr pPort)
     PixmapPtr pPixmap = _getPixmap (pPort->d.pDraw);
     SECPtr pSec = SECPTR (pPort->pScrn);
 
-    if (pPort->drawing != ON_FB)
-    {
-        XDBG_DEBUG (MVDO, "pPort->drawing (%d), pSec->pVideoPriv->video_punch (%d)\n",
-                    pPort->drawing, pSec->pVideoPriv->video_punch);
+    if (pPort->drawing != ON_FB || !pSec->pVideoPriv->video_punch)
         return;
-    }
 
     if (!pPort->punched)
     {
-        DamageRegionAppend(pPort->d.pDraw, pPort->d.clip_boxes);
         secExaPrepareAccess (pPixmap, EXA_PREPARE_DEST);
         if (pPixmap->devPrivate.ptr)
             memset (pPixmap->devPrivate.ptr, 0,
                     pPixmap->drawable.width * pPixmap->drawable.height * 4);
         secExaFinishAccess (pPixmap, EXA_PREPARE_DEST);
-        DamageRegionProcessPending(pPort->d.pDraw);
         XDBG_TRACE (MVDO, "Punched (%dx%d) %p. \n",
                     pPixmap->drawable.width, pPixmap->drawable.height,
                     pPixmap->devPrivate.ptr);
         pPort->punched = TRUE;
-#if 0
         DamageDamageRegion (pPort->d.pDraw, pPort->d.clip_boxes);
-#endif
     }
 }
 
