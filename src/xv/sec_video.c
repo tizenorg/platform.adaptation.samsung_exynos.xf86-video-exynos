@@ -1353,11 +1353,11 @@ _secVideoTvoutCvtCallback (SECCvt *cvt,
 
     XDBG_DEBUG (MVDO, "######################## \n");
     XDBG_DEBUG (MVDO, "cvt(%p) src(%p) dst(%p)\n", cvt, src, dst);
-#if 0
+
     if (pPort->wait_vbuf != src)
         XDBG_WARNING (MVDO, "wait_vbuf(%p) != src(%p). \n",
                       pPort->wait_vbuf, src);
-#endif
+
     pPort->wait_vbuf = NULL;
 
     XDBG_DEBUG (MVDO, "########################.. \n");
@@ -1374,11 +1374,11 @@ _secVideoLayerNotifyFunc (SECLayer *layer, int type, void *type_data, void *data
 
     XDBG_RETURN_IF_FAIL (pPort != NULL);
     XDBG_RETURN_IF_FAIL (VBUF_IS_VALID (vbuf));
-#if 0
+
     if (pPort->wait_vbuf != vbuf)
         XDBG_WARNING (MVDO, "wait_vbuf(%p) != vbuf(%p). \n",
                       pPort->wait_vbuf, vbuf);
-#endif
+
     XDBG_DEBUG (MVBUF, "now_showing(%p). \n", vbuf);
 
     pPort->wait_vbuf = NULL;
