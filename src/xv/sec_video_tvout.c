@@ -220,14 +220,9 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
 
     if (ret == 0)
         return 0;
-    if (!secLayerIsVisible (tv->layer))
-    {
-        secLayerShow (tv->layer);
-    }
-    else
-    {
-        XDBG_DEBUG(MTVO,"tv->layer(%p) is not visible\n", tv->layer);
-    }
+
+    secLayerShow (tv->layer);
+
     return ret;
 }
 
