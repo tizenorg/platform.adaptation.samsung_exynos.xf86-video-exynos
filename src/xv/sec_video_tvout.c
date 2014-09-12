@@ -80,35 +80,7 @@ struct _SECVideoTv
     SECLayerOutput output;
 
 };
-#if 0
-static Bool
-_secVideoTvCalSize (SECVideoTv* tv, int src_w, int src_h, int dst_w, int dst_h)
-{
-    float r;
 
-    if (src_w < MIN_WIDTH || src_h < MIN_HEIGHT)
-    {
-        XDBG_WARNING (MTVO, "size(%dx%d) must be more than (%dx%d).\n",
-                      src_w, src_h, MIN_WIDTH, MAX_WIDTH);
-    }
-
-    r = (float)dst_w / src_w;
-    if (r < MIN_SCALE || r > MAX_SCALE)
-    {
-        XDBG_WARNING (MTVO, "ratio_w(%f) is out of range(%f~%f).\n",
-                      r, MIN_SCALE, MAX_SCALE);
-    }
-
-    r = (float)dst_h / src_h;
-    if (r < MIN_SCALE || r > MAX_SCALE)
-    {
-        XDBG_WARNING (MTVO, "ratio_h(%d) is out of range(%f~%f).\n",
-                      r, MIN_SCALE, MAX_SCALE);
-    }
-
-    return TRUE;
-}
-#endif
 static SECVideoBuf*
 _secVideoTvGetOutBuffer (SECVideoTv* tv, int width, int height, Bool secure)
 {
@@ -227,21 +199,12 @@ _secVideoTvPutImageInternal (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect
     XDBG_DEBUG (MTVO, "rect (%d,%d %dx%d) \n",
                 rect->x, rect->y, rect->width, rect->height);
 
-#if 0
-    if (tv->lpos == LAYER_LOWER1)
-        if (!_secVideoTvCalSize (tv, vbuf->width, vbuf->height,
-                                rect->width, rect->height))
-        {
-            return 0;
-        }
-#endif
     xRectangle src_rect, dst_rect;
     secLayerGetRect (tv->layer, &src_rect, &dst_rect);
 
     if (tv->is_resized == 1)
     {
         secLayerFreezeUpdate (tv->layer, FALSE);
-//        secLayerHide (tv->layer);
         tv->is_resized = 0;
     }
 
@@ -698,14 +661,6 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
             return FALSE;
         }
     }
-#if 0
-    /* FIXME: Using IPP converter if we haven't native frame size */
-    if (ratio_w > 1 || ratio_h > 1)
-    {
-        XDBG_DEBUG(MTVO, "Can't direct draw ratio_w (%d) && ratio_h (%d) != 1\n", ratio_w, ratio_h);
-        return FALSE;
-    }
-#endif
     XDBG_DEBUG(MTVO, "Support direct drawing\n");
     return TRUE;
 }
