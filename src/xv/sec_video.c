@@ -1804,9 +1804,7 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
             goto fail_to_put_tvout;
         }
 
-        tv_cvt = secVideoTvGetConverter (pPort->tv);
-
-        if (tv_cvt == NULL)
+        if (!secVideoTvGetConverter (pPort->tv))
         {
             if (!secVideoCanDirectDrawing (NULL, pPort->d.src.width, pPort->d.src.height,
                                            pPort->d.dst.width, pPort->d.dst.height))
@@ -1815,6 +1813,9 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
                                    fail_to_put_tvout);
             }
         }
+
+        tv_cvt = secVideoTvGetConverter (pPort->tv);
+
         if (tv_cvt)
         {
             /* HDMI    : SN12
@@ -1862,7 +1863,6 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
         {
             SECLayer *layer = secVideoTvGetLayer (pPort->tv);
             XDBG_GOTO_IF_FAIL (layer != NULL, fail_to_put_tvout);
-
             secLayerEnableVBlank (layer, TRUE);
             secLayerAddNotifyFunc (layer, _secVideoLayerNotifyFunc, pPort);
         }
@@ -2684,7 +2684,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
 
     if (pPort->tv)
     {
-        SECCvt *tv_cvt = secVideoTvGetConverter (pPort->tv);
+        SECCvt *old_tv_cvt = secVideoTvGetConverter (pPort->tv);
         if (pPort->d.id != pPort->old_d.id ||
             pPort->d.width != pPort->old_d.width ||
             pPort->d.height != pPort->old_d.height ||
@@ -2693,10 +2693,10 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
             _secVideoCloseInBuffer (pPort);
             pPort->inbuf_is_fb = FALSE;
         }
-        else if (tv_cvt != NULL)
+        else if (old_tv_cvt != NULL)
         {
             SECCvtProp dst_prop;
-            secCvtGetProperpty (tv_cvt, NULL, &dst_prop);
+            secCvtGetProperpty (old_tv_cvt, NULL, &dst_prop);
 
             if (dst_prop.degree != pPort->hw_rotate ||
                 dst_prop.hflip != pPort->hflip ||
@@ -2717,15 +2717,30 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
             XDBG_DEBUG(MTVO, "==> new frame: (x%d,y%d) (w%d-h%d)\n",
                        pPort->d.dst.x, pPort->d.dst.y,
                        pPort->d.dst.width, pPort->d.dst.height);
-            SECCvt *old_tv_cvt = secVideoTvGetConverter (pPort->tv);
             if (secVideoTvResizeOutput (pPort->tv, &pPort->d.src, &pPort->d.dst) == TRUE)
             {
                 SECCvt *new_tv_cvt = secVideoTvGetConverter (pPort->tv);
-                if (tv_cvt != NULL)
+                if (new_tv_cvt != NULL)
                 {
                     if (secCvtGetStamp (new_tv_cvt) != secCvtGetStamp(old_tv_cvt))
                     {
-                        secCvtAddCallback (tv_cvt, _secVideoTvoutCvtCallback, pPort);
+                        SECLayer *layer = secVideoTvGetLayer (pPort->tv);
+                        /* TODO: Clear if fail */
+                        XDBG_RETURN_VAL_IF_FAIL (layer != NULL, BadRequest);
+                        secLayerRemoveNotifyFunc (layer, _secVideoLayerNotifyFunc);
+                        secLayerEnableVBlank (layer, FALSE);
+                        secCvtAddCallback (new_tv_cvt, _secVideoTvoutCvtCallback, pPort);
+                    }
+                }
+                else
+                {
+                    SECLayer *layer = secVideoTvGetLayer (pPort->tv);
+                    /* TODO: Clear if fail */
+                    XDBG_RETURN_VAL_IF_FAIL (layer != NULL, BadRequest);
+                    secLayerEnableVBlank (layer, TRUE);
+                    if (!secLayerExistNotifyFunc (layer, _secVideoLayerNotifyFunc))
+                    {
+                        secLayerAddNotifyFunc (layer, _secVideoLayerNotifyFunc, pPort);
                     }
                 }
             }
