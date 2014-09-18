@@ -77,6 +77,11 @@ struct _SECVideoTv
     int          is_resized;
     unsigned int convert_id;
     unsigned int src_id;
+    /* attributes */
+    int rotate;
+    int hflip;
+    int vflip;
+
     SECLayerOutput output;
 
 };
@@ -529,7 +534,9 @@ secVideoTvPutImage (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect, int csc
         dst_prop.crop = dst_crop;
         dst_prop.secure = vbuf->secure;
         dst_prop.csc_range = csc_range;
-
+        dst_prop.hflip = tv->hflip;
+        dst_prop.vflip = tv->vflip;
+        dst_prop.degree = tv->rotate;
         if (!secCvtEnsureSize (&src_prop, &dst_prop))
         {
             XDBG_ERROR(MTVO, "Can't ensure size\n");
@@ -677,5 +684,15 @@ secVideoTvReCreateConverter(SECVideoTv* tv)
     tv->cvt = secCvtCreate (tv->pScrn, CVT_OP_M2M);
     XDBG_RETURN_VAL_IF_FAIL (tv->cvt != NULL, FALSE);
     secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
+    return TRUE;
+}
+
+Bool
+secVideoSetAttributes(SECVideoTv* tv, int rotate, int hflip, int vflip)
+{
+    XDBG_RETURN_VAL_IF_FAIL(tv != NULL, FALSE);
+    tv->rotate = rotate;
+    tv->vflip = vflip;
+    tv->hflip = hflip;
     return TRUE;
 }

@@ -83,6 +83,11 @@
 #define OUTPUT_EXT   (1 << 1)
 #define OUTPUT_FULL  (1 << 8)
 
+#define CHANGED_NONE 0
+#define CHANGED_INPUT 1
+#define CHANGED_OUTPUT 2
+#define CHANGED_ALL 3
+
 static XF86VideoEncodingRec dummy_encoding[] =
 {
     { 0, "XV_IMAGE", -1, -1, { 1, 1 } },
@@ -194,6 +199,12 @@ typedef struct
     int preemption;     /* 1:high, 0:default, -1:low */
     Bool secure;
     int csc_range;
+
+    Bool old_secure;
+    int old_csc_range;
+    int old_rotate;
+    int old_hflip;
+    int old_vflip;
 
     ScrnInfoPtr pScrn;
     PutData d;
@@ -1124,9 +1135,7 @@ _secVideoGetOutbuf (SECPortPrivPtr pPort)
 static void
 _secVideoCloseInBuffer (SECPortPrivPtr pPort)
 {
-    int i;
-
-    _secVideoUngrabTvout (pPort);
+    int i; 
 
     if (pPort->gem_list)
     {
@@ -1909,7 +1918,7 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
                           pSecMode->ext_connector_mode.vdisplay,
                           &tv_rect, TRUE);
     }
-
+    secVideoSetAttributes (pPort->tv, pPort->hw_rotate, pPort->hflip, pPort->vflip);
     /* if secVideoTvPutImage returns FALSE, it means this frame won't show on TV. */
     if (!secVideoTvPutImage (pPort->tv, inbuf, &tv_rect, pPort->csc_range))
         return FALSE;
@@ -2179,6 +2188,49 @@ _secVideoRegisterEventResourceTypes (void)
         return FALSE;
 
     return TRUE;
+}
+
+static int
+_secVideoCheckChange (SECPortPrivPtr pPort)
+{
+    int ret = CHANGED_NONE;
+
+    if (pPort->d.id != pPort->old_d.id
+        || pPort->d.width != pPort->old_d.width
+        || pPort->d.height != pPort->old_d.height
+        || memcmp (&pPort->d.src, &pPort->old_d.src, sizeof(xRectangle))
+        || pPort->old_secure != pPort->secure
+        || pPort->old_csc_range != pPort->csc_range)
+    {
+        XDBG_DEBUG(MVDO, "pPort(%d) old_src(%dx%d %d,%d %dx%d) : new_src(%dx%d %d,%d %dx%d)\n",
+                   pPort->index, pPort->old_d.width, pPort->old_d.height,
+                   pPort->old_d.src.x, pPort->old_d.src.y, pPort->old_d.src.width,
+                   pPort->old_d.src.height, pPort->d.width, pPort->d.height,
+                   pPort->d.src.x, pPort->d.src.y, pPort->d.src.width,
+                   pPort->d.src.height);
+        XDBG_DEBUG(MVDO, "old_secure(%d) old_csc(%d) : new_secure(%d) new_csc(%d)\n",
+                   pPort->old_secure, pPort->old_csc_range, pPort->secure, pPort->csc_range);
+
+        ret += CHANGED_INPUT;
+    }
+
+    if (memcmp (&pPort->d.dst, &pPort->old_d.dst, sizeof(xRectangle))
+        || pPort->old_rotate != pPort->rotate
+        || pPort->old_hflip != pPort->hflip
+        || pPort->old_vflip != pPort->vflip)
+    {
+        XDBG_DEBUG(MVDO, "pPort(%d) old_dst(%d,%d %dx%d) : new_dst(%dx%d %dx%d)\n",
+                   pPort->index, pPort->old_d.dst.x, pPort->old_d.dst.y,
+                   pPort->old_d.dst.width, pPort->old_d.dst.height, pPort->d.dst.x,
+                   pPort->d.dst.y, pPort->d.dst.width, pPort->d.dst.height);
+        XDBG_DEBUG(MVDO, "old_rotate(%d) old_hflip(%d) old_vflip(%d)\n",
+                   pPort->old_rotate, pPort->old_hflip, pPort->old_vflip);
+        XDBG_DEBUG(MVDO, "new_rotate (%d) new_hflip(%d) new_vflip(%d)\n",
+                   pPort->rotate, pPort->hflip, pPort->vflip);
+        ret += CHANGED_OUTPUT; // output changed
+    }
+
+    return ret;
 }
 
 int
@@ -2636,87 +2688,35 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     else if (pPort->stream_cnt == 1)
         pPort->stream_cnt++;
 
-    if (pPort->cvt)
+    int frame_changed = _secVideoCheckChange (pPort);
+
+    switch (frame_changed)
     {
-        SECCvtProp dst_prop;
-
-        secCvtGetProperpty (pPort->cvt, NULL, &dst_prop);
-
-        if (pPort->d.id != pPort->old_d.id ||
-            pPort->d.width != pPort->old_d.width ||
-            pPort->d.height != pPort->old_d.height ||
-            memcmp (&pPort->d.src, &pPort->old_d.src, sizeof (xRectangle)) ||
-            dst_prop.degree != pPort->hw_rotate ||
-            dst_prop.hflip != pPort->hflip ||
-            dst_prop.vflip != pPort->vflip ||
-            dst_prop.secure != pPort->secure ||
-            dst_prop.csc_range != pPort->csc_range)
+    case CHANGED_INPUT:
+        if (pPort->cvt)
         {
-            XDBG_DEBUG (MVDO, "pPort(%d) streams(%d) rotate(%d) flip(%d,%d) secure(%d) range(%d) usr_output(%x) on(%s)\n",
-                        pPort->index, streaming_ports,
-                        pPort->rotate, pPort->hflip, pPort->vflip, pPort->secure, pPort->csc_range,
-                        pPort->usr_output, drawing_type[pPort->drawing]);
-            XDBG_DEBUG (MVDO, "pPort(%d) old_src(%dx%d %d,%d %dx%d) : new_src(%dx%d %d,%d %dx%d)\n",
-                        pPort->index, pPort->old_d.width, pPort->old_d.height,
-                        pPort->old_d.src.x, pPort->old_d.src.y,
-                        pPort->old_d.src.width, pPort->old_d.src.height,
-                        pPort->d.width, pPort->d.height,
-                        pPort->d.src.x, pPort->d.src.y,
-                        pPort->d.src.width, pPort->d.src.height);
             _secVideoCloseConverter (pPort);
             _secVideoCloseInBuffer (pPort);
             pPort->inbuf_is_fb = FALSE;
         }
-    }
-
-    if (memcmp (&pPort->d.dst, &pPort->old_d.dst, sizeof (xRectangle)))
-    {
-        XDBG_DEBUG (MVDO, "pPort(%d) old_dst(%d,%d %dx%d) : new_dst(%dx%d %dx%d)\n",
-                    pPort->index,
-                    pPort->old_d.dst.x, pPort->old_d.dst.y,
-                    pPort->old_d.dst.width, pPort->old_d.dst.height,
-                    pPort->d.dst.x, pPort->d.dst.y,
-                    pPort->d.dst.width, pPort->d.dst.height);
-        _secVideoCloseConverter (pPort);
-        _secVideoCloseOutBuffer (pPort, FALSE);
-        pPort->inbuf_is_fb = FALSE;
-    }
-
-    if (pPort->tv)
-    {
-        SECCvt *old_tv_cvt = secVideoTvGetConverter (pPort->tv);
-        if (pPort->d.id != pPort->old_d.id ||
-            pPort->d.width != pPort->old_d.width ||
-            pPort->d.height != pPort->old_d.height ||
-            memcmp (&pPort->d.src, &pPort->old_d.src, sizeof (xRectangle)))
+        if (pPort->tv)
         {
+            _secVideoUngrabTvout (pPort);
             _secVideoCloseInBuffer (pPort);
             pPort->inbuf_is_fb = FALSE;
+            pPort->punched = FALSE;
         }
-        else if (old_tv_cvt != NULL)
+        break;
+    case CHANGED_OUTPUT:
+        if (pPort->cvt)
         {
-            SECCvtProp dst_prop;
-            secCvtGetProperpty (old_tv_cvt, NULL, &dst_prop);
-
-            if (dst_prop.degree != pPort->hw_rotate ||
-                dst_prop.hflip != pPort->hflip ||
-                dst_prop.vflip != pPort->vflip ||
-                dst_prop.secure != pPort->secure ||
-                dst_prop.csc_range != pPort->csc_range)
-            {
-                _secVideoCloseInBuffer (pPort);
-                pPort->inbuf_is_fb = FALSE;
-            }
+            _secVideoCloseConverter (pPort);
+            _secVideoCloseOutBuffer (pPort, FALSE);
+            pPort->inbuf_is_fb = FALSE;
         }
-
-        if (pPort->tv && memcmp (&pPort->d.dst, &pPort->old_d.dst, sizeof (xRectangle)))
+        if (pPort->tv)
         {
-            XDBG_DEBUG(MTVO, "Detect frame changes. old frame: (x%d,y%d) (w%d-h%d)\n",
-                       pPort->old_d.dst.x, pPort->old_d.dst.y,
-                       pPort->old_d.dst.width, pPort->old_d.dst.height);
-            XDBG_DEBUG(MTVO, "==> new frame: (x%d,y%d) (w%d-h%d)\n",
-                       pPort->d.dst.x, pPort->d.dst.y,
-                       pPort->d.dst.width, pPort->d.dst.height);
+            SECCvt *old_tv_cvt = secVideoTvGetConverter (pPort->tv);
             if (secVideoTvResizeOutput (pPort->tv, &pPort->d.src, &pPort->d.dst) == TRUE)
             {
                 SECCvt *new_tv_cvt = secVideoTvGetConverter (pPort->tv);
@@ -2752,6 +2752,25 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
             pPort->punched = FALSE;
             pPort->wait_vbuf = NULL;
         }
+        break;
+    case CHANGED_ALL:
+        if (pPort->cvt)
+        {
+            _secVideoCloseConverter (pPort);
+            _secVideoCloseOutBuffer (pPort, FALSE);
+            _secVideoCloseInBuffer (pPort);
+            pPort->inbuf_is_fb = FALSE;
+        }
+        if (pPort->tv)
+        {
+            _secVideoUngrabTvout (pPort);
+            _secVideoCloseInBuffer (pPort);
+            pPort->inbuf_is_fb = FALSE;
+            pPort->punched = FALSE;
+        }
+        break;
+    default:
+        break;
     }
 
     if (!_secVideoCalculateSize (pPort))
@@ -2853,7 +2872,12 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
     secUtilVideoBufferUnref (inbuf);
 
     pPort->old_d = pPort->d;
+    pPort->old_hflip = pPort->hflip;
+    pPort->old_vflip = pPort->vflip;
+    pPort->old_rotate = pPort->rotate;
     pPort->old_output = output;
+    pPort->old_secure = pPort->secure;
+    pPort->old_csc_range = pPort->csc_range;
 
     XDBG_TRACE (MVDO, "=======================================.. \n");
 
