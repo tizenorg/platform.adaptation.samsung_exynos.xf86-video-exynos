@@ -2308,7 +2308,7 @@ static Bool
 secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf, int csc_range)
 {
      SECCvtProp src_prop = {0,}, dst_prop = {0,};
-     SECVideoBuf *outbuf;
+     SECVideoBuf *outbuf = NULL;
 
      pPort->secure=0;
 

@@ -77,6 +77,11 @@ struct _SECVideoTv
     int          is_resized;
     unsigned int convert_id;
     unsigned int src_id;
+    /* attributes */
+    int rotate;
+    int hflip;
+    int vflip;
+
     SECLayerOutput output;
 
 };
@@ -529,7 +534,9 @@ secVideoTvPutImage (SECVideoTv *tv, SECVideoBuf *vbuf, xRectangle *rect, int csc
         dst_prop.crop = dst_crop;
         dst_prop.secure = vbuf->secure;
         dst_prop.csc_range = csc_range;
-
+        dst_prop.hflip = tv->hflip;
+        dst_prop.vflip = tv->vflip;
+        dst_prop.degree = tv->rotate;
         if (!secCvtEnsureSize (&src_prop, &dst_prop))
         {
             XDBG_ERROR(MTVO, "Can't ensure size\n");
@@ -606,10 +613,17 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
     XDBG_RETURN_VAL_IF_FAIL(src_h > 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_w > 0, FALSE);
     XDBG_RETURN_VAL_IF_FAIL(dst_h > 0, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL(tv != 0, FALSE);
     int ratio_w = 0;
     int ratio_h = 0;
     XDBG_DEBUG(MTVO, "tv(%p) src_w %d, src_h %d, dst_w %d, dst_h %d\n",
                tv, src_w, src_h, dst_w, dst_h);
+    if (tv->hflip != 0 || tv->vflip != 0 || tv->rotate != 0)
+    {
+        XDBG_DEBUG(MTVO, "Can't direct draw hflip(%d), vflip(%d), rotate(%d)\n",
+                   tv->hflip, tv->vflip, tv->rotate);
+        return FALSE;
+    }
     if (src_w >= dst_w)
     {
         ratio_w = src_w / dst_w;
@@ -652,15 +666,13 @@ secVideoCanDirectDrawing (SECVideoTv *tv, int src_w, int src_h, int dst_w, int d
         XDBG_DEBUG(MTVO, "ratio_h = %d\n", ratio_h);
     }
 
-    if (tv != NULL)
-    {
-        if (!secLayerSupport (tv->pScrn, tv->output, tv->lpos, tv->src_id))
+    if (!secLayerSupport (tv->pScrn, tv->output, tv->lpos, tv->src_id))
         {
             XDBG_DEBUG(MTVO, "Can't direct draw. Layer not support. lpos(%d), src_id (%c%c%c%c)\n",
             tv->lpos, FOURCC_STR(tv->src_id));
             return FALSE;
         }
-    }
+
     XDBG_DEBUG(MTVO, "Support direct drawing\n");
     return TRUE;
 }
@@ -677,5 +689,15 @@ secVideoTvReCreateConverter(SECVideoTv* tv)
     tv->cvt = secCvtCreate (tv->pScrn, CVT_OP_M2M);
     XDBG_RETURN_VAL_IF_FAIL (tv->cvt != NULL, FALSE);
     secCvtAddCallback (tv->cvt, _secVideoTvCvtCallback, tv);
+    return TRUE;
+}
+
+Bool
+secVideoSetAttributes(SECVideoTv* tv, int rotate, int hflip, int vflip)
+{
+    XDBG_RETURN_VAL_IF_FAIL(tv != NULL, FALSE);
+    tv->rotate = rotate;
+    tv->vflip = vflip;
+    tv->hflip = hflip;
     return TRUE;
 }
