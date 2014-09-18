@@ -24,11 +24,11 @@ BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(xdbg)
 BuildRequires:  pkgconfig(libdrm)
 
-%if !%{with x}
-ExclusiveArch:
-%else
-ExclusiveArch: %arm
-%endif
+#%if !%{with x}
+#ExclusiveArch:
+#%else
+#ExclusiveArch: %arm
+#%endif
 
 %description
 This package provides the driver for the Samsung display device exynos

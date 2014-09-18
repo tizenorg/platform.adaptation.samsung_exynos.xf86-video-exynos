@@ -163,7 +163,7 @@ void        secModeInit (ScrnInfoPtr pScrn);
 void        secModeDeinit (ScrnInfoPtr pScrn);
 xf86CrtcPtr secModeCoveringCrtc (ScrnInfoPtr pScrn, BoxPtr pBox, xf86CrtcPtr pDesiredCrtc, BoxPtr pBoxCrtc);
 int         secModeGetCrtcPipe (xf86CrtcPtr pCrtc);
-Bool        secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo, SECFlipEventHandler handler);
+Bool        secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo, RegionPtr pFlipRegion, unsigned int client_idx, XID drawable_id, SECFlipEventHandler handler);
 void        secModeLoadPalette (ScrnInfoPtr pScrn, int numColors, int* indices, LOCO* colors, VisualPtr pVisual);
 
 void        secDisplaySwapModeFromKmode(ScrnInfoPtr pScrn, drmModeModeInfoPtr kmode, DisplayModePtr	pMode);

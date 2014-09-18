@@ -966,7 +966,9 @@ _doPageFlip (DrawablePtr pDraw, int crtc_pipe, xf86CrtcPtr pCrtc, DRI2FrameEvent
     /* Reset buffer position */
     secRenderBoSetPos(pBackExaPixPriv->bo, pDraw->x, pDraw->y);
 
-    if (!secModePageFlip (pScrn, NULL, pEvent, crtc_pipe, pBackExaPixPriv->bo, secDri2FlipEventHandler))
+    if (!secModePageFlip (pScrn, NULL, pEvent, crtc_pipe, pBackExaPixPriv->bo,
+    		pEvent->pRegion, pEvent->client_idx, pEvent->drawable_id,
+    		secDri2FlipEventHandler))
     {
         XDBG_WARNING (MDRI2, "fail to secModePageFlip\n");
         return FALSE;

@@ -103,6 +103,7 @@ secPresentFlipEventHandler(unsigned int frame, unsigned int tv_sec,
 	PresentVblankEventRec *pEvent = event_data;
 	uint64_t ust = (uint64_t) tv_sec * 1000000 + tv_usec;
 	uint64_t msc = (uint64_t)frame;
+	XDBG_DEBUG(MDRI3, "event_id %lld\n", pEvent->event_id);
 	present_event_notify(pEvent->event_id, ust, msc);
 	free(pEvent);
 }
@@ -220,13 +221,18 @@ SECPresentCheckFlip(RRCrtcPtr 	pRRcrtc,
 		 	 	 	PixmapPtr 	pPixmap,
 		 	 	 	Bool 		sync_flip)
 {
-	SECPtr pSecScrn = SECPTR(xf86ScreenToScrn(pRRcrtc->pScreen));
+	ScrnInfoPtr pScrn = xf86ScreenToScrn(pRRcrtc->pScreen);
+	SECPixmapPriv *pExaPixPriv = exaGetPixmapDriverPrivate (pPixmap);
 
-    int ret = secFbFindBo(pSecScrn->pFb,
-    		pPixmap->drawable.x, pWin->drawable.y, pWin->drawable.width, pWin->drawable.height,
-    		NULL, NULL);
-    if (ret != rgnSAME)
-        return FALSE;
+	if (pExaPixPriv->isFrameBuffer == FALSE)
+    {
+    	XDBG_RETURN_VAL_IF_FAIL (secSwapToRenderBo(pScrn, pWin->drawable.width, pWin->drawable.height, pExaPixPriv->bo), FALSE);
+
+    	pExaPixPriv->owner = pWin->drawable.id;
+        pExaPixPriv->isFrameBuffer = TRUE;
+        pExaPixPriv->sbc = 0;
+        pExaPixPriv->size = pPixmap->drawable.height * pPixmap->devKind;
+    }
 	return TRUE;
 }
 
@@ -252,15 +258,26 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
 		return BadAlloc;
 	}
 	pEvent->event_id = event_id;
+	pEvent->pRRcrtc = pRRcrtc;
 
     SECPixmapPriv *pExaPixPriv = exaGetPixmapDriverPrivate (pPixmap);
 
-	ret = secModePageFlip (pScrn, NULL, pEvent, pipe, pExaPixPriv->bo, secPresentFlipEventHandler);
+	/*FIXME - get client id by draw id*/
+	unsigned int client_idx = 0;
+	XID drawable_id = pExaPixPriv->owner;
+
+	ret = secModePageFlip (pScrn, NULL, pEvent, pipe, pExaPixPriv->bo, 
+						   NULL, client_idx, drawable_id,
+						   secPresentFlipEventHandler);
 	if (!ret) {
 		secPresentFlipAbort(pEvent);
 		XDBG_WARNING(MDRI3, "fail to flip\n");
 	}
-	XDBG_DEBUG(MDRI3, "flip OK\n");
+	else 
+	{
+		XDBG_DEBUG(MDRI3, "flip OK\n");
+	}
+	
 	return ret;
 }
 

@@ -226,6 +226,7 @@ tbm_bo    secFbFindBoByPoint (SECFbPtr pFb, int x, int y);
 tbm_bo    secFbSwapBo        (SECFbPtr pFb, tbm_bo back_bo);
 
 tbm_bo    secRenderBoCreate    (ScrnInfoPtr pScrn, int width, int height);
+int 	  secSwapToRenderBo	   (ScrnInfoPtr pScrn, int width, int height, tbm_bo carr_bo);
 tbm_bo    secRenderBoRef       (tbm_bo bo);
 void          secRenderBoUnref     (tbm_bo bo);
 void          secRenderBoSetPos    (tbm_bo bo, int x, int y);

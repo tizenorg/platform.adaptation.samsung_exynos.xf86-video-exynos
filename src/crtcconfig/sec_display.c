@@ -715,7 +715,9 @@ int secModeGetCrtcPipe (xf86CrtcPtr pCrtc)
 }
 
 Bool
-secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo, SECFlipEventHandler handler)
+secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo,
+				 RegionPtr pFlipRegion, unsigned int client_idx, XID drawable_id,
+				 SECFlipEventHandler handler)
 {
     SECPageFlipPtr pPageFlip = NULL;
     SECFbBoDataPtr bo_data;
@@ -726,7 +728,6 @@ secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe
     SECPtr pSec = SECPTR(pScrn);
     int ret;
     int fb_id = 0;
-    DRI2FrameEventPtr pEvent = (DRI2FrameEventPtr) flip_info;
 
     BoxRec b1;
     int retBox, found=0;
@@ -800,7 +801,7 @@ secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe
                 secCrtcTurn (pCrtcPriv->pCrtc, TRUE, FALSE, FALSE);
 
 #if DBG_DRM_EVENT
-            pPageFlip->xdbg_log_pageflip = xDbgLogDrmEventAddPageflip (pipe, pEvent->client_idx, pEvent->drawable_id);
+            pPageFlip->xdbg_log_pageflip = xDbgLogDrmEventAddPageflip (pipe, client_idx, drawable_id);
 #endif
 
             XDBG_DEBUG (MSEC, "dump_mode(%x)\n", pSec->dump_mode);
@@ -813,12 +814,12 @@ secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe
             pPageFlip->time = GetTimeInMillis ();
 
             /*Set DirtyFB*/
-            if(pSec->use_partial_update && pEvent->pRegion)
+            if(pSec->use_partial_update && pFlipRegion)
             {
                 int nBox;
                 BoxPtr pBox;
                 RegionRec new_region;
-                RegionPtr pRegion = pEvent->pRegion;
+                RegionPtr pRegion = pFlipRegion;
 
                 for (nBox = RegionNumRects(pRegion),
                      pBox = RegionRects(pRegion); nBox--; pBox++)
@@ -829,7 +830,7 @@ secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe
 
                 if (pCrtcPriv->screen_rotate_degree > 0)
                 {
-                    RegionCopy (&new_region, pEvent->pRegion);
+                    RegionCopy (&new_region, pFlipRegion);
                     secUtilRotateRegion (pCrtc->mode.HDisplay, pCrtc->mode.VDisplay,
                                          &new_region, pCrtcPriv->screen_rotate_degree);
                     pRegion = &new_region;
@@ -1679,6 +1680,7 @@ Bool secDisplayUpdateRequest(ScrnInfoPtr pScrn)
             pPageFlip->flip_failed = FALSE;
             pPageFlip->xdbg_log_pageflip = NULL;
             pPageFlip->time = GetTimeInMillis ();
+            pPageFlip->handler = secDri2FlipEventHandler;
 
             /* accessilitity */
             if (pCrtcPriv->bAccessibility || pCrtcPriv->screen_rotate_degree > 0)

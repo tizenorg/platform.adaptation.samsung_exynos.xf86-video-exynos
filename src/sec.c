@@ -1279,9 +1279,8 @@ _secFbFreeBoData(void* data)
     bo_data = NULL;
 }
 
-
 static tbm_bo
-_secFbCreateBo (SECFbPtr pFb, int x, int y, int width, int height)
+_secFbCreateBo2 (SECFbPtr pFb, int x, int y, int width, int height, tbm_bo prev_bo)
 {
     XDBG_RETURN_VAL_IF_FAIL ((pFb != NULL), NULL);
     XDBG_RETURN_VAL_IF_FAIL ((width > 0), NULL);
@@ -1306,6 +1305,18 @@ _secFbCreateBo (SECFbPtr pFb, int x, int y, int width, int height)
 
     bo = tbm_bo_alloc (pSec->tbm_bufmgr, pitch*height, flag);
     XDBG_GOTO_IF_FAIL (bo != NULL, fail);
+    
+    if (prev_bo != NULL)
+    {
+    	tbm_bo_swap(bo, prev_bo);
+    	
+    	//delete prev bo(naw _bo contains an old GEM object)
+    	tbm_bo_unref(bo);
+    	//delete TBM_BO_DATA_FB if present, because the new will be created in here
+    	tbm_bo_delete_user_data(prev_bo, TBM_BO_DATA_FB);
+    	
+    	bo = prev_bo;
+    }
 
     /* memset 0x0 */
     bo_handle1 = tbm_bo_map (bo, TBM_DEVICE_CPU, TBM_OPTION_WRITE);
@@ -1368,6 +1379,12 @@ fail:
     }
 
     return NULL;
+}
+
+static tbm_bo
+_secFbCreateBo (SECFbPtr pFb, int x, int y, int width, int height)
+{
+	return _secFbCreateBo2 (pFb, x, y, width, height, NULL);
 }
 
 static tbm_bo
@@ -1790,6 +1807,14 @@ secRenderBoCreate (ScrnInfoPtr pScrn, int width, int height)
     SECPtr pSec = SECPTR (pScrn);
 
     return _secFbCreateBo(pSec->pFb, -1, -1, width, height);
+}
+
+int
+secSwapToRenderBo(ScrnInfoPtr pScrn, int width, int height, tbm_bo carr_bo)
+{
+    SECPtr pSec = SECPTR (pScrn);
+
+    return _secFbCreateBo2(pSec->pFb, -1, -1, width, height, carr_bo);
 }
 
 tbm_bo
