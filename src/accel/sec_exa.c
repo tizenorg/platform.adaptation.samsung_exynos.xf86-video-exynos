@@ -334,7 +334,8 @@ SECExaModifyPixmapHeader (PixmapPtr pPixmap, int width, int height,
         prop.crop.width = width;
         prop.crop.height = height;
 
-        secCvtEnsureSize (NULL, &prop);
+        if (!secCvtEnsureSize (NULL, &prop))
+            return FALSE;
 
         privPixmap->bo = secRenderBoCreate(pScrn, prop.width, prop.height);
         if (!privPixmap->bo)

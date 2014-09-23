@@ -760,10 +760,11 @@ _secWbCloseDrm (SECWb *wb)
         buf.buf_id = i;
 
         if (wb->dst_buf[i])
-            for (j = 0; j < EXYNOS_DRM_PLANAR_MAX && j < PLANAR_CNT; j++)
+            for (j = 0; j < PLANAR_CNT; j++)
                 buf.handle[j] = wb->dst_buf[i]->handles[j];
 
-        secDrmIppQueueBuf (wb->pScrn, &buf);
+        XDBG_RETURN_IF_FAIL(FALSE != secDrmIppQueueBuf (wb->pScrn, &buf));
+
 
         wb->queued[i] = FALSE;
     }
