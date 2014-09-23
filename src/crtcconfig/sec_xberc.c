@@ -243,6 +243,7 @@ static Bool SECXbercDump (int argc, char ** argv, RRPropertyValuePtr value, Scrn
     pSec->dump_str = strdup (argv[2]);
 
     c = strtok (argv[2], ",");
+
     do
     {
         if (!strcmp (c, "off"))
@@ -651,6 +652,7 @@ static Bool SECXbercXvPerf (int argc, char ** argv, RRPropertyValuePtr value, Sc
     pSec->xvperf = strdup (argv[2]);
 
     c = strtok (argv[2], ",");
+
     do
     {
         if (!strcmp (c, "off"))

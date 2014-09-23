@@ -648,7 +648,9 @@ secUtilFlushDump (void *d)
     if (!is_dir)
     {
         DIR *dp;
-        mkdir (dir, 0755);
+        if(mkdir (dir, 0755))
+            return;
+
         if (!(dp = opendir (dir)))
         {
             ErrorF ("failed: open'%s'\n", dir);
@@ -1482,6 +1484,8 @@ secUtilListAdd (void *list, void *key, void *user_data)
         return list;
 
     data = malloc (sizeof (ListData));
+    XDBG_RETURN_VAL_IF_FAIL (data != NULL, NULL);
+
     data->key = key;
     data->data = user_data;
 
