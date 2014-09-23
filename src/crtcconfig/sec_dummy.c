@@ -373,9 +373,9 @@ SECDummyOutputDetect(xf86OutputPtr pOutput)
     {
         if (pCur->is_dummy == FALSE && pCur->mode_output->connection == DRM_MODE_CONNECTED)
         {
-            return XF86OutputStatusDisconnected;
-/* TODO: Need to change flag useAsyncSwap not here */
+        /* TODO: Need to change flag useAsyncSwap not here */
             pSec->useAsyncSwap = FALSE;
+            return XF86OutputStatusDisconnected;
         }
     }
     pSec->useAsyncSwap = TRUE;
@@ -421,6 +421,7 @@ SECDummyOutputDestory(xf86OutputPtr pOutput)
 {
     XDBG_DEBUG(MDOUT,"\n");
     SECOutputPrivPtr pOutputPriv = pOutput->driver_private;
+
     if (pOutputPriv == NULL)
         return;
     SECPtr pSec = SECPTR (pOutput->scrn);
@@ -430,13 +431,16 @@ SECDummyOutputDestory(xf86OutputPtr pOutput)
         TimerFree (pSec->resume_timer);
         pSec->resume_timer = NULL;
     }
-    if (pOutputPriv->mode_output->modes)
-        free(pOutputPriv->mode_output->modes);
-    if (pOutputPriv->mode_output)
-        free(pOutputPriv->mode_output);
-    if (pOutputPriv->mode_encoder)
-        free(pOutputPriv->mode_encoder);
 
+    if (pOutputPriv->mode_output)
+    {
+        if (pOutputPriv->mode_output->modes)
+            free (pOutputPriv->mode_output->modes);
+        free (pOutputPriv->mode_output);
+    }
+
+    if (pOutputPriv->mode_encoder)
+        free (pOutputPriv->mode_encoder);
 
     (pSec->pSecMode->num_dummy_output)--;
     xorg_list_del (&pOutputPriv->link);
