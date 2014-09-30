@@ -60,6 +60,7 @@ typedef enum
     VBLNAK_INFO_NONE,
     VBLANK_INFO_SWAP,
     VBLANK_INFO_PLANE,
+    VBLANK_INFO_PRESENT,
     VBLANK_INFO_MAX
 } SECVBlankInfoType;
 
@@ -118,6 +119,9 @@ typedef struct _secDrmMode
     int unset_connector_type;
 } SECModeRec, *SECModePtr;
 
+typedef void (*SECFlipEventHandler) (unsigned int frame, unsigned int tv_exynos,
+				 unsigned int tv_uexynos, void *event_data, Bool flip_failed);
+
 typedef struct _secPageFlip
 {
     xf86CrtcPtr pCrtc;
@@ -130,6 +134,8 @@ typedef struct _secPageFlip
 
     void *data;
     CARD32 time;
+
+    SECFlipEventHandler handler;
 
 #if DBG_DRM_EVENT
     void *xdbg_log_pageflip;
@@ -160,7 +166,7 @@ void        secModeInit (ScrnInfoPtr pScrn);
 void        secModeDeinit (ScrnInfoPtr pScrn);
 xf86CrtcPtr secModeCoveringCrtc (ScrnInfoPtr pScrn, BoxPtr pBox, xf86CrtcPtr pDesiredCrtc, BoxPtr pBoxCrtc);
 int         secModeGetCrtcPipe (xf86CrtcPtr pCrtc);
-Bool        secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo);
+Bool        secModePageFlip (ScrnInfoPtr pScrn, xf86CrtcPtr pCrtc, void* flip_info, int pipe, tbm_bo back_bo, RegionPtr pFlipRegion, unsigned int client_idx, XID drawable_id, SECFlipEventHandler handler);
 void        secModeLoadPalette (ScrnInfoPtr pScrn, int numColors, int* indices, LOCO* colors, VisualPtr pVisual);
 
 void        secDisplaySwapModeFromKmode(ScrnInfoPtr pScrn, drmModeModeInfoPtr kmode, DisplayModePtr	pMode);
