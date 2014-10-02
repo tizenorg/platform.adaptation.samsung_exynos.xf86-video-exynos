@@ -508,6 +508,7 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
         }
     }
 
+#ifdef HAVE_DRI3_PRESENT_H
     /* present */
     if (xf86ReturnOptValBool (pSec->Options, OPTION_PRESENT, FALSE))
     {
@@ -519,6 +520,7 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
     {
         pSec->is_dri3 = TRUE;
     }
+#endif
 
     /* rotate */
     pSec->rotate = RR_Rotate_0;
@@ -1041,7 +1043,8 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
                                 "DRI2 initialization failed\n");
                 }
             }
-            
+
+#ifdef HAVE_DRI3_PRESENT_H
             if (pSec->is_present)
             {
             	if(!secPresentScreenInit(pScreen))
@@ -1060,6 +1063,7 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
                                 "DRI3 initialization failed\n");
                 }
             }
+#endif
         }
     }
 
@@ -1814,7 +1818,9 @@ secSwapToRenderBo(ScrnInfoPtr pScrn, int width, int height, tbm_bo carr_bo)
 {
     SECPtr pSec = SECPTR (pScrn);
 
-    return _secFbCreateBo2(pSec->pFb, -1, -1, width, height, carr_bo);
+    tbm_bo tbo = _secFbCreateBo2(pSec->pFb, -1, -1, width, height, carr_bo);
+
+	return tbo ? 1 : 0;
 }
 
 tbm_bo

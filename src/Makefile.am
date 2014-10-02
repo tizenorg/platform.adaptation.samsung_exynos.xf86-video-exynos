@@ -25,10 +25,14 @@ AM_CFLAGS += -I@top_srcdir@/src/crtcconfig
 exynos_drv_la_SOURCES += \
 	accel/sec_exa.c \
 	accel/sec_exa_sw.c \
-	accel/sec_present.c \
-	accel/sec_dri3.c \
 	accel/sec_dri2.c
 AM_CFLAGS += -I@top_srcdir@/src/accel
+
+if ENABLE_DRI3_PRESENT
+exynos_drv_la_SOURCES += \
+	accel/sec_present.c \
+	accel/sec_dri3.c
+endif
 
 # xv
 exynos_drv_la_SOURCES += \
