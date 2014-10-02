@@ -52,36 +52,6 @@
 #include "sec_accel.h"
 
 // -------------------------- Private functions--------------------------------
-/* TODO : _boCreateFromFd and  int _tbm_bo_import_fd mast be moved to _tbm_bo_export_fd */
-
-tbm_bo _tbm_bo_import_fd(int drm_fd, tbm_bufmgr bufmgr, int prime_fd, int size)
-{
-	//getting handle from fd
-	unsigned int gem = 0;
-	if (drmPrimeFDToHandle(drm_fd, prime_fd, &gem))
-	{
-		return NULL;
-	}
-
-	//getting name from handle(gem)
-    struct drm_gem_flink arg_flink = {0,};
-    arg_flink.handle = gem;
-    if (drmIoctl(drm_fd, DRM_IOCTL_GEM_FLINK, &arg_flink))
-    {
-    	return NULL;
-    }
-
-    //creating tbm_bo from name
-    return tbm_bo_import(bufmgr, arg_flink.name);
-}
-
-int _tbm_bo_export_fd(tbm_bo bo, int *fd)
-{
-	tbm_bo_handle handle = tbm_bo_get_handle(bo, TBM_DEVICE_MM);
-	*fd = handle.s32;
-	return 0;
-}
-
 
 // -------------------------- Callback functions--------------------------------
 static int
@@ -113,6 +83,18 @@ SECDRI3Open(ScreenPtr screen, RRProviderPtr provider, int *fdp) {
 	return Success;
 }
 
+int _check_bpp(CARD8 bpp)
+{
+    switch (bpp) {
+    case 8:
+    case 16:
+    case 32:
+    	return 1;
+    default:
+        return 0;
+    }
+}
+
 static PixmapPtr SECDRI3PixmapFromFd (ScreenPtr pScreen,
                                       int fd,
                                       CARD16 width,
@@ -127,23 +109,33 @@ static PixmapPtr SECDRI3PixmapFromFd (ScreenPtr pScreen,
 
 	PixmapPtr pPixmap = NULL;
 
-	if (depth == 1)
-		return NULL;
+	XDBG_RETURN_VAL_IF_FAIL( (width <= INT16_MAX && height <= INT16_MAX), NULL);
 
-    //create bo
-    tbm_bo tbo = _tbm_bo_import_fd(pSec->drm_fd, pSec->tbm_bufmgr,
-    								fd, (uint32_t) height * stride);
+	XDBG_RETURN_VAL_IF_FAIL( ((uint32_t)width * bpp <= (uint32_t)stride * 8), NULL);
 
-    if (tbo == NULL)
-    	goto no_bo;
+	XDBG_RETURN_VAL_IF_FAIL( (depth > 8), NULL);
+
+	XDBG_RETURN_VAL_IF_FAIL( _check_bpp(bpp), NULL);
+
+    tbm_bo tbo = tbm_bo_import_fd(pSec->tbm_bufmgr, fd);
+
+    XDBG_RETURN_VAL_IF_FAIL( tbo != NULL, NULL);
+
+    uint32_t real_size = tbm_bo_size(tbo);
+    uint32_t target_size = (uint32_t) height * stride;
+
+    if( real_size < target_size)
+    {
+    	XDBG_WARNING(MDRI3, "the real size of bo(%p) less then target: %d, %d\n", tbo, real_size, target_size);
+    	return NULL;
+    }
+
 
     pPixmap = (*pScreen->CreatePixmap) (pScreen, 0, 0, depth,
     									CREATE_PIXMAP_USAGE_SUB_FB);
 
-    if (!pPixmap)
-    	goto no_pixmap;
+    XDBG_GOTO_IF_FAIL( pPixmap != NULL, no_pixmap);
 
-	tbm_bo_ref(tbo);
     if (!pScreen->ModifyPixmapHeader(pPixmap, width, height, 0, 0, stride, tbo))
     	goto no_modify;
 
@@ -153,7 +145,7 @@ no_modify:
 	(*pScreen->DestroyPixmap)(pPixmap);
 no_pixmap:
 	tbm_bo_unref(tbo);
-no_bo:
+
     return NULL;
 }
 
@@ -169,8 +161,8 @@ static int SECDRI3FdFromPixmap (ScreenPtr pScreen,
 	priv = exaGetPixmapDriverPrivate(pPixmap);
 	if (!priv)
 		return -1;
-	ret = _tbm_bo_export_fd(priv->bo, &fd);
-	if (ret < 0)
+	ret = tbm_bo_export_fd(priv->bo);
+	if (ret <= 0)
 		return -1;
 	*stride = priv->stride;
 	*size = tbm_bo_size(priv->bo);
