@@ -597,14 +597,14 @@ secModeDeinit (ScrnInfoPtr pScrn)
         xf86CrtcDestroy (pCrtc);
     }
 
-    SECOutputPrivPtr output_ref, output_next;
+    SECOutputPrivPtr output_ref = NULL, output_next = NULL;
     xorg_list_for_each_entry_safe (output_ref, output_next, &pSecMode->outputs, link)
     {
         pOutput = output_ref->pOutput;
         xf86OutputDestroy (pOutput);
     }
 
-    SECPlanePrivPtr plane_ref, plane_next;
+    SECPlanePrivPtr plane_ref = NULL, plane_next = NULL;
     xorg_list_for_each_entry_safe (plane_ref, plane_next, &pSecMode->planes, link)
     {
         secPlaneDeinit (pScrn, plane_ref);
@@ -1764,7 +1764,7 @@ secDisplayChangeMode (ScrnInfoPtr pScrn)
             return TRUE;
         }
     }
-    SECOutputPrivPtr output_ref, output_next;
+    SECOutputPrivPtr output_ref = NULL, output_next = NULL;
 /* Priority LVDS > HDMI > Virtual */
     xorg_list_for_each_entry_safe (output_ref, output_next, &pSecMode->outputs, link)
     {
