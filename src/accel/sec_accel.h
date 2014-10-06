@@ -139,6 +139,7 @@ void secExaScreenLock           (ScreenPtr pScreen, int enable);
 int  secExaScreenAsyncSwap      (ScreenPtr pScreen, int enable);
 int  secExaScreenSetScrnPixmap  (ScreenPtr pScreen);
 tbm_bo secExaPixmapGetBo    (PixmapPtr pPix);
+int secExaPixmapSetBo(PixmapPtr pPix, tbm_bo bo);
 
 /* sw EXA */
 Bool secExaSwInit   (ScreenPtr pScreen, ExaDriverPtr pExaDriver);

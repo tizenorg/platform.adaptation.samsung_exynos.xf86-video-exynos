@@ -45,6 +45,7 @@
 #include "xf86.h"
 
 #include "xf86drm.h"
+#include "misyncshm.h"
 
 #include "dri3.h"
 
@@ -135,13 +136,14 @@ SECDRI3PixmapFromFd(ScreenPtr pScreen,
         goto free_bo;
     }
 
-    pPixmap = (*pScreen->CreatePixmap)(pScreen, 0, 0, depth,
-    CREATE_PIXMAP_USAGE_SUB_FB);
+    pPixmap = (*pScreen->CreatePixmap)(pScreen, 0, 0, depth, 0);
 
     XDBG_GOTO_IF_FAIL(pPixmap != NULL, free_bo);
 
-    if (!pScreen->ModifyPixmapHeader(pPixmap, width, height, 0, 0, stride, tbo))
+    if (!pScreen->ModifyPixmapHeader(pPixmap, width, height, 0, 0, stride, 0))
         goto free_pix;
+
+    secExaPixmapSetBo(pPixmap, tbo);
 
     return pPixmap;
 
@@ -185,6 +187,9 @@ static dri3_screen_info_rec sec_dri3_screen_info = {
 Bool
 secDri3ScreenInit(ScreenPtr screen)
 {
+    if (!miSyncShmScreenInit(screen))
+        return FALSE;
+
     return dri3_screen_init(screen, &sec_dri3_screen_info);
 }
 
