@@ -15,7 +15,7 @@
 #define TRUE 1
 #endif
 #ifndef FALSE
-#define FALSE 1
+#define FALSE 0
 #endif
 
 #define G2D_MAX_CMD 64

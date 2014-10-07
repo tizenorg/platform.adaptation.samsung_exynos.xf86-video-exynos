@@ -1307,19 +1307,20 @@ _secFbCreateBo2 (SECFbPtr pFb, int x, int y, int width, int height, tbm_bo prev_
     else
         flag = TBM_BO_DEFAULT;
 
-    bo = tbm_bo_alloc (pSec->tbm_bufmgr, pitch*height, flag);
-    XDBG_GOTO_IF_FAIL (bo != NULL, fail);
-    
     if (prev_bo != NULL)
     {
-    	tbm_bo_swap(bo, prev_bo);
-    	
-    	//delete prev bo(naw _bo contains an old GEM object)
-    	tbm_bo_unref(bo);
-    	//delete TBM_BO_DATA_FB if present, because the new will be created in here
-    	tbm_bo_delete_user_data(prev_bo, TBM_BO_DATA_FB);
-    	
+        XDBG_RETURN_VAL_IF_FAIL (tbm_bo_size(prev_bo)  >= (pitch*height), NULL);
+
+        tbm_bo_delete_user_data(prev_bo, TBM_BO_DATA_FB);
+
+        /* TODO: check flags*/
+
     	bo = prev_bo;
+    }
+    else
+    {
+        bo = tbm_bo_alloc (pSec->tbm_bufmgr, pitch*height, flag);
+        XDBG_GOTO_IF_FAIL (bo != NULL, fail);
     }
 
     /* memset 0x0 */

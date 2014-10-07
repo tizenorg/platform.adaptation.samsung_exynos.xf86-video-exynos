@@ -249,6 +249,7 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
 	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	int pipe = secModeGetCrtcPipe(pCrtc);
 	PresentVblankEventPtr pEvent = NULL;
+    SECPtr pSec = SECPTR (pScrn);
 
 	Bool ret;
 
@@ -269,14 +270,30 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
 	ret = secModePageFlip (pScrn, NULL, pEvent, pipe, pExaPixPriv->bo, 
 						   NULL, client_idx, drawable_id,
 						   secPresentFlipEventHandler);
-	if (!ret) {
-		secPresentFlipAbort(pEvent);
-		XDBG_WARNING(MDRI3, "fail to flip\n");
-	}
-	else 
-	{
-		XDBG_DEBUG(MDRI3, "flip OK\n");
-	}
+    if (!ret)
+    {
+        secPresentFlipAbort(pEvent);
+        XDBG_WARNING(MDRI3, "fail to flip\n");
+    }
+    else
+    {
+        /*FIXME -
+         * Should we swap front bo and presented bo?
+         * Should we set up presented pixmap as root?
+         * */
+        PixmapPtr pRootPix = pScreen->GetWindowPixmap (pScreen->root);;
+        SECPixmapPriv *pRootPixPriv = exaGetPixmapDriverPrivate (pRootPix);
+        tbm_bo front_bo = pRootPixPriv->bo ? pRootPixPriv->bo : pSec->pFb->default_bo;
+
+        XDBG_DEBUG(MDRI3, "doPageFlip id:0x%x Client:%d pipe:%d\n"
+                "Present: pix(ptr:%p id:x%x), bo(ptr:%p name:%d) -->\n"
+                "Root: pix(ptr:%p id:x%x), bo(ptr:%p name:%d)\n",
+                (unsigned int )pExaPixPriv->owner, client_idx, pipe,
+                pPixmap, pPixmap->drawable.id,  pExaPixPriv->bo, tbm_bo_export(pExaPixPriv->bo),
+                pPixmap, pRootPix->drawable.id, front_bo,        tbm_bo_export(front_bo) );
+
+        secFbSwapBo(pSec->pFb, pExaPixPriv->bo);
+    }
 	
 	return ret;
 }
