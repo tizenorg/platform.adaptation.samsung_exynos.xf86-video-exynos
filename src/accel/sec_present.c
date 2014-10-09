@@ -166,7 +166,7 @@ SECPresentGetUstMsc(RRCrtcPtr pRRcrtc, CARD64 *ust, CARD64 *msc)
 	//Get the current msc/ust value from the kernel
 	Bool ret = secDisplayGetCurMSC(pScrn, pCrtcPriv->pipe, ust, msc);
 
-	XDBG_DEBUG(MDRI3, "%s: pipe:%d ust:%lld msc:%lld()\n",
+	XDBG_DEBUG(MDRI3, "%s: pipe:%d ust:%lld msc:%lld\n",
 			(ret?"OK":"ERROR"), pCrtcPriv->pipe, *ust, *msc);
 	return (int)ret;
 }
@@ -243,15 +243,22 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
                    PixmapPtr	pPixmap,
                    Bool			sync_flip)
 {
-
 	xf86CrtcPtr pCrtc = pRRcrtc->devPrivate;
 	ScreenPtr pScreen = pRRcrtc->pScreen;
 	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	int pipe = secModeGetCrtcPipe(pCrtc);
+    SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
 	PresentVblankEventPtr pEvent = NULL;
     SECPtr pSec = SECPTR (pScrn);
 
 	Bool ret;
+
+	/* TODO - precoess sync_flip flag
+     * if (sync_flip)
+     *      -//-
+     * else
+     *      -//-
+     * */
 
 	pEvent = calloc(sizeof(PresentVblankEventRec), 1);
 	if (!pEvent) {
@@ -278,19 +285,25 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
     else
     {
         /*FIXME -
-         * Should we swap front bo and presented bo?
+         * Should we swap front bo and new bo?
          * Should we set up presented pixmap as root?
          * */
-        PixmapPtr pRootPix = pScreen->GetWindowPixmap (pScreen->root);;
+        PixmapPtr pRootPix = pScreen->GetWindowPixmap (pScreen->root);
         SECPixmapPriv *pRootPixPriv = exaGetPixmapDriverPrivate (pRootPix);
-        tbm_bo front_bo = pRootPixPriv->bo ? pRootPixPriv->bo : pSec->pFb->default_bo;
+        PixmapPtr pScreenPix = pScreen->GetScreenPixmap (pScreen);
+        SECPixmapPriv *pScreenPixPriv = exaGetPixmapDriverPrivate (pScreenPix);
 
         XDBG_DEBUG(MDRI3, "doPageFlip id:0x%x Client:%d pipe:%d\n"
-                "Present: pix(ptr:%p id:x%x), bo(ptr:%p name:%d) -->\n"
-                "Root: pix(ptr:%p id:x%x), bo(ptr:%p name:%d)\n",
+                "Present:pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
+                "Root:   pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
+                "Screen: pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n",
                 (unsigned int )pExaPixPriv->owner, client_idx, pipe,
-                pPixmap, pPixmap->drawable.id,  pExaPixPriv->bo, tbm_bo_export(pExaPixPriv->bo),
-                pPixmap, pRootPix->drawable.id, front_bo,        tbm_bo_export(front_bo) );
+                pPixmap->drawable.serialNumber, pPixmap, pPixmap->drawable.id,
+                pExaPixPriv->bo, tbm_bo_export(pExaPixPriv->bo),
+                pRootPix->drawable.serialNumber, pRootPix, pRootPix->drawable.id,
+                pRootPixPriv->bo, (pRootPixPriv->bo ? tbm_bo_export(pRootPixPriv->bo) : -1), 
+                pScreenPix->drawable.serialNumber, pScreenPix, pScreenPix->drawable.id,
+                pScreenPixPriv->bo, (pScreenPixPriv->bo ? tbm_bo_export(pScreenPixPriv->bo) : -1));
 
         secFbSwapBo(pSec->pFb, pExaPixPriv->bo);
     }

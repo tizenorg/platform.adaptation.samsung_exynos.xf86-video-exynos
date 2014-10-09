@@ -52,7 +52,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <libudev.h>
 #endif
 
-#define USE_XDBG 1
+#define USE_XDBG 0
 
 /* drm bo data type */
 typedef enum

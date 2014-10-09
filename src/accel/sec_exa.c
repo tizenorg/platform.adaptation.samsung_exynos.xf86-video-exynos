@@ -646,30 +646,6 @@ secExaMigratePixmap (PixmapPtr pPix, tbm_bo bo)
     return TRUE;
 }
 
-int
-secExaPixmapSetBo(PixmapPtr pPix, tbm_bo bo)
-{
-    SECPixmapPriv *pExaPixPriv = NULL;
-
-    if (pPix == NULL)
-        return 0;
-
-    pExaPixPriv = exaGetPixmapDriverPrivate(pPix);
-    if (pExaPixPriv == NULL)
-        return 0;
-
-    //if bo is already present, delete it
-    if (pExaPixPriv->bo != NULL)
-    {
-        tbm_bo_unref(pExaPixPriv->bo);
-    }
-
-    pExaPixPriv->bo = bo;
-
-    return 1;
-}
-
-
 tbm_bo
 secExaPixmapGetBo (PixmapPtr pPix)
 {

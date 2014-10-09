@@ -87,20 +87,6 @@ SECDRI3Open(ScreenPtr screen, RRProviderPtr provider, int *fdp)
     return Success;
 }
 
-int
-_check_bpp(CARD8 bpp)
-{
-    switch (bpp)
-    {
-    case 8:
-    case 16:
-    case 32:
-        return 1;
-    default:
-        return 0;
-    }
-}
-
 static PixmapPtr 
 SECDRI3PixmapFromFd(ScreenPtr pScreen,
                     int fd,
@@ -115,13 +101,16 @@ SECDRI3PixmapFromFd(ScreenPtr pScreen,
 
     PixmapPtr pPixmap = NULL;
 
+    XDBG_DEBUG(MDRI3, "fd:%d width:%d height:%d stride:%d depth:%d bpp:%d\n",
+               fd, width, height, stride, depth, bpp);
+
     XDBG_RETURN_VAL_IF_FAIL((width <= INT16_MAX && height <= INT16_MAX), NULL);
 
     XDBG_RETURN_VAL_IF_FAIL(((uint32_t )width * bpp <= (uint32_t )stride * 8), NULL);
 
     XDBG_RETURN_VAL_IF_FAIL((depth > 8), NULL);
 
-    XDBG_RETURN_VAL_IF_FAIL(_check_bpp(bpp), NULL);
+    XDBG_RETURN_VAL_IF_FAIL((bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32), NULL);
 
     tbm_bo tbo = tbm_bo_import_fd(pSec->tbm_bufmgr, fd);
 
@@ -143,7 +132,13 @@ SECDRI3PixmapFromFd(ScreenPtr pScreen,
     if (!pScreen->ModifyPixmapHeader(pPixmap, width, height, 0, 0, stride, 0))
         goto free_pix;
 
-    secExaPixmapSetBo(pPixmap, tbo);
+    secExaMigratePixmap(pPixmap, tbo);
+
+    XDBG_DEBUG(MDRI3, "pixmap(sn:%ld p:%p ID:0x%x %dx%d stride:%d depth:%d bpp:%d) bo(name:%d p:%p)\n",
+            pPixmap->drawable.serialNumber, pPixmap, pPixmap->drawable.id,
+            pPixmap->drawable.width, pPixmap->drawable.height,
+            pPixmap->devKind, pPixmap->drawable.depth, pPixmap->drawable.bitsPerPixel,
+            tbm_bo_export(tbo), tbo);
 
     return pPixmap;
 
@@ -164,14 +159,22 @@ SECDRI3FdFromPixmap(ScreenPtr pScreen,
     SECPixmapPriv * priv = NULL;
     int fd;
 
+    XDBG_DEBUG(MDRI3, "pixmap(sn:%ld p:%p ID:0x%x) (%dx%d)\n",
+            pPixmap->drawable.serialNumber, pPixmap, pPixmap->drawable.id,
+            pPixmap->drawable.width, pPixmap->drawable.height);
+
+
     priv = exaGetPixmapDriverPrivate(pPixmap);
-    if (!priv)
-        return -1;
+    XDBG_RETURN_VAL_IF_FAIL(priv, -1);
+
     fd = tbm_bo_export_fd(priv->bo);
-    if (fd <= 0)
-        return -1;
-    *stride = priv->stride;
+    XDBG_RETURN_VAL_IF_FAIL(fd > 0, -1);
+
+    *stride = pPixmap->devKind;
     *size = tbm_bo_size(priv->bo);
+
+    XDBG_DEBUG(MDRI3, "fd:%d stride:%d size:%d bo_name:%d\n",
+            fd, *stride, *size, tbm_bo_export(priv->bo));
     return fd;
 }
 
