@@ -16,6 +16,7 @@ AM_MAINTAINER_MODE
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 AC_PROG_CC
+AC_PROG_CC_STDC
 AM_PROG_AS
 AM_PROG_CC_C_O
 
@@ -69,10 +70,14 @@ fi
 AM_CONDITIONAL(HAVE_FT, test "x$ftests" = "xyes")
 
 # check the conditions
-PKG_CHECK_MODULES(XDBG, xdbg)
+PKG_CHECK_MODULES(XDBG, [xdbg], [xdbg=yes], [xdbg=no])
 PKG_CHECK_MODULES(DRM, libdrm)
 PKG_CHECK_MODULES(LIBTBM, libtbm)
 PKG_CHECK_MODULES(UDEV, [libudev], [udev=yes], [udev=no])
+
+if test x"$xdbg" = xyes; then
+    AC_DEFINE(USE_XDBG_EXTERNAL,1,[Enable external log system])
+fi
 
 if test x"$udev" = xyes; then
 	AC_DEFINE(HAVE_UDEV,1,[Enable udev-based monitor hotplug detection])

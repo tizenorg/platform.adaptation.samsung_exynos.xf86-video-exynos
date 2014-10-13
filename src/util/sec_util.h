@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fbdevhw.h>
 #include <pixman.h>
 #include <list.h>
-#include <xdbg.h>
+#include <sec_xdbg_wrapper.h>
 #include "fimg2d.h"
 
 #include "sec.h"

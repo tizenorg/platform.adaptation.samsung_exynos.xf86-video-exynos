@@ -1744,7 +1744,7 @@ secCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
 
     pCrtcPriv->pCrtc = pCrtc;
 
-#if 1
+#ifdef USE_XDBG
     pCrtcPriv->pFpsDebug = xDbgLogFpsDebugCreate ();
     if (pCrtcPriv->pFpsDebug == NULL)
     {

@@ -153,7 +153,6 @@ int main ()
     rule_s rule_p = {};
     error_s ret;
     /* getting the connection */
-    DBG;
     xcb_conn_p = xcb_connect (NULL, &screen_number);
     if (!xcb_conn_p)
     {
