@@ -482,7 +482,7 @@ secWbHandleIppEvent (int fd, unsigned int *buf_idx, void *data)
 
     if (wb->status == STATUS_STOPPED)
     {
-        XDBG_ERROR (MWB, "stopped. ignore a event.\n", data);
+        XDBG_ERROR (MWB, "stopped. ignore a event. %p\n", data);
         return;
     }
 

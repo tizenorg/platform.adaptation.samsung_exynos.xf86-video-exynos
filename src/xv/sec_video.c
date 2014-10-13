@@ -1893,7 +1893,7 @@ _secVideoPutImageTvout (SECPortPrivPtr pPort, int output, SECVideoBuf *inbuf)
                         sub, inbuf->stamp,
                         inbuf->keys[0], inbuf->keys[1], inbuf->keys[2]);
         }
-        XDBG_DEBUG (MVDO, "pPort->wait_vbuf (%d) skip_frame\n", pPort->wait_vbuf);
+        XDBG_DEBUG (MVDO, "pPort->wait_vbuf (%p) skip_frame\n", pPort->wait_vbuf);
         return FALSE;
     }
     else if (pSec->pVideoPriv->video_fps)
@@ -2065,7 +2065,7 @@ _secVideoSetOutputExternalProperty (DrawablePtr pDraw, Bool video_only)
                              pWin, atom_external, XA_CARDINAL, 32,
                              PropModeReplace, 1, (unsigned int*)&video_only, TRUE);
 
-    XDBG_TRACE (MVDO, "pDraw(0x%08x) video-only(%s)\n",
+    XDBG_TRACE (MVDO, "pDraw(0x%lx) video-only(%s)\n",
                 pDraw->id, (video_only)?"ON":"OFF");
 
     return TRUE;
@@ -2423,25 +2423,25 @@ SECVideoSetPortAttribute (ScrnInfoPtr pScrn,
     if (attribute == _portAtom (PAA_ROTATION))
     {
         pPort->rotate = value;
-        XDBG_DEBUG (MVDO, "rotate(%d) \n", value);
+        XDBG_DEBUG (MVDO, "rotate(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _portAtom (PAA_HFLIP))
     {
         pPort->hflip = value;
-        XDBG_DEBUG (MVDO, "hflip(%d) \n", value);
+        XDBG_DEBUG (MVDO, "hflip(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _portAtom (PAA_VFLIP))
     {
         pPort->vflip = value;
-        XDBG_DEBUG (MVDO, "vflip(%d) \n", value);
+        XDBG_DEBUG (MVDO, "vflip(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _portAtom (PAA_PREEMPTION))
     {
         pPort->preemption = value;
-        XDBG_DEBUG (MVDO, "preemption(%d) \n", value);
+        XDBG_DEBUG (MVDO, "preemption(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _portAtom (PAA_OUTPUT))
@@ -2453,20 +2453,20 @@ SECVideoSetPortAttribute (ScrnInfoPtr pScrn,
         else
             pPort->usr_output = OUTPUT_LCD|OUTPUT_EXT;
 
-        XDBG_DEBUG (MVDO, "output (%d) \n", value);
+        XDBG_DEBUG (MVDO, "output (%d) \n", (int) value);
 
         return Success;
     }
     else if (attribute == _portAtom (PAA_SECURE))
     {
         pPort->secure = value;
-        XDBG_DEBUG (MVDO, "secure(%d) \n", value);
+        XDBG_DEBUG (MVDO, "secure(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _portAtom (PAA_CSC_RANGE))
     {
         pPort->csc_range = value;
-        XDBG_DEBUG (MVDO, "csc_range(%d) \n", value);
+        XDBG_DEBUG (MVDO, "csc_range(%d) \n",(int) value);
         return Success;
     }
 

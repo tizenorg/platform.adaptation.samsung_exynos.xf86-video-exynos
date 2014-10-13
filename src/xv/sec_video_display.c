@@ -460,7 +460,7 @@ SECDisplayVideoSetPortAttribute (ScrnInfoPtr pScrn,
     if (attribute == _portAtom (PAA_OVERLAY))
     {
         pPort->overlay = value;
-        XDBG_DEBUG (MDA, "overlay(%d) \n", value);
+        XDBG_DEBUG (MDA, "overlay(%d) \n", (int) value);
         return Success;
     }
 

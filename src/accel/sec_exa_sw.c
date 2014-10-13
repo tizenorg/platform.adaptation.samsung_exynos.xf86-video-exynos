@@ -486,7 +486,9 @@ _swDoCopy (ExaBox* box, void* data)
                 box->box.x2,
                 box->box.y2,
                 gOpCopy.srcX,
-                gOpCopy.srcY);
+                gOpCopy.srcY,
+                gOpCopy.dstX,
+                gOpCopy.dstY);
 
     srcX = gOpCopy.srcX + box->box.x1 - box->pSrc->pos.x1;
     srcY = gOpCopy.srcY + box->box.y1 - box->pSrc->pos.y1;
@@ -725,7 +727,7 @@ SECExaSwPrepareSolid (PixmapPtr pPixmap, int alu, Pixel planemask, Pixel fg)
 
 bail:
     XDBG_TRACE (MEXAS, "FAIL: pix:%p hint:%d, num_pix:%d\n",
-                pPixmap, index, pPixmap->usage_hint, gOpSolid.pOpDst->num);
+                pPixmap, pPixmap->usage_hint, gOpSolid.pOpDst->num);
     gOpSolid.bDo = FALSE;
     gOpSolid.pGC = NULL;
 
@@ -833,10 +835,10 @@ SECExaSwPrepareCopy (PixmapPtr pSrcPixmap, PixmapPtr pDstPixmap,
 
 bail:
     XDBG_TRACE (MEXAS, "FAIL\n");
-    XDBG_TRACE (MEXAS, "   SRC pix:%p, index:%d, hint:%d, num_pix:%d\n",
-                pSrcPixmap, index, pSrcPixmap->usage_hint, num_src_pix);
-    XDBG_TRACE (MEXAS, "   DST pix:%p, index:%d, hint:%d, num_pix:%d\n",
-                pDstPixmap, index, pDstPixmap->usage_hint, num_dst_pix);
+    XDBG_TRACE (MEXAS, "   SRC pix:%p, hint:%d, num_pix:%d\n",
+                pSrcPixmap, pSrcPixmap->usage_hint, num_src_pix);
+    XDBG_TRACE (MEXAS, "   DST pix:%p, hint:%d, num_pix:%d\n",
+                pDstPixmap, pDstPixmap->usage_hint, num_dst_pix);
     gOpCopy.bDo = FALSE;
 
     return TRUE;
