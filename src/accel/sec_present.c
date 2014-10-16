@@ -221,7 +221,8 @@ SECPresentCheckFlip(RRCrtcPtr 	pRRcrtc,
 		 	 	 	PixmapPtr 	pPixmap,
 		 	 	 	Bool 		sync_flip)
 {
-	ScrnInfoPtr pScrn = xf86ScreenToScrn(pRRcrtc->pScreen);
+
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pWin->drawable.pScreen);
 	SECPixmapPriv *pExaPixPriv = exaGetPixmapDriverPrivate (pPixmap);
 
 	if (pExaPixPriv->isFrameBuffer == FALSE)
@@ -284,10 +285,6 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
     }
     else
     {
-        /*FIXME -
-         * Should we swap front bo and new bo?
-         * Should we set up presented pixmap as root?
-         * */
         PixmapPtr pRootPix = pScreen->GetWindowPixmap (pScreen->root);
         SECPixmapPriv *pRootPixPriv = exaGetPixmapDriverPrivate (pRootPix);
         PixmapPtr pScreenPix = pScreen->GetScreenPixmap (pScreen);
@@ -305,16 +302,76 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
                 pScreenPix->drawable.serialNumber, pScreenPix, pScreenPix->drawable.id,
                 pScreenPixPriv->bo, (pScreenPixPriv->bo ? tbm_bo_export(pScreenPixPriv->bo) : -1));
 
-        secFbSwapBo(pSec->pFb, pExaPixPriv->bo);
     }
 	
 	return ret;
 }
 
-static void
-SECPresentUnflip(ScreenPtr pScreen, uint64_t event_id)
+/*
+ * Queue a flip back to the normal frame buffer
+ */
+static void SECPresentUnflip(ScreenPtr pScreen, uint64_t event_id)
 {
-	XDBG_INFO(MDRI3, "isn't implamentation\n");
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    SECPtr pSec = SECPTR(pScrn);
+    PresentVblankEventPtr pEvent = NULL;
+    PixmapPtr pPixmap = pScreen->GetScreenPixmap(pScreen);
+    tbm_bo *bos = NULL;
+    int num_bo;
+    int ret;
+
+    if (!SECPresentCheckFlip(NULL, pScreen->root, pPixmap, TRUE))
+    {
+        XDBG_WARNING(MDRI3, "fail to check flip for screen pixmap\n");
+        return;
+    }
+
+    ret = secFbFindBo(pSec->pFb, pPixmap->drawable.x, pPixmap->drawable.y,
+            pPixmap->drawable.width, pPixmap->drawable.height, &num_bo, &bos);
+
+    if (ret != rgnSAME)
+    {
+        XDBG_WARNING(MDRI3, "fail to find frame buffer bo\n");
+        free(bos);
+        return;
+    }
+
+    pEvent = calloc(sizeof(PresentVblankEventRec), 1);
+    if (!pEvent)
+    {
+        free(bos);
+        return;
+    }
+
+    pEvent->event_id = event_id;
+    pEvent->pRRcrtc = NULL;
+
+    SECPixmapPriv *pExaPixPriv = exaGetPixmapDriverPrivate (pPixmap);
+
+
+    ret = secModePageFlip(pScrn, NULL, pEvent, -1, bos[0], NULL, 0,
+                0, secPresentFlipEventHandler);
+
+    if (!ret) {
+        secPresentFlipAbort(pEvent);
+        XDBG_WARNING(MDRI3, "fail to flip\n");
+    }
+    else {
+
+        PixmapPtr pRootPix = pScreen->GetWindowPixmap (pScreen->root);
+        SECPixmapPriv *pRootPixPriv = exaGetPixmapDriverPrivate (pRootPix);
+
+        XDBG_DEBUG(MDRI3, "doPageFlip id:0x%x Client:%d pipe:%d\n"
+                "Present: pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
+                "Root:    pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n",
+                (unsigned int )pExaPixPriv->owner, 0, -1,
+                pPixmap->drawable.serialNumber, pPixmap, pPixmap->drawable.id,
+                bos[0], tbm_bo_export(bos[0]),
+                pRootPix->drawable.serialNumber, pRootPix, pRootPix->drawable.id,
+                pRootPixPriv->bo, (pRootPixPriv->bo ? tbm_bo_export(pRootPixPriv->bo) : -1));
+    }
+
+    free(bos);
 }
 
 

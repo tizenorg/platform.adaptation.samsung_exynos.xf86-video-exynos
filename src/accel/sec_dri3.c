@@ -133,6 +133,7 @@ SECDRI3PixmapFromFd(ScreenPtr pScreen,
         goto free_pix;
 
     secExaMigratePixmap(pPixmap, tbo);
+    tbm_bo_unref(tbo);
 
     XDBG_DEBUG(MDRI3, "pixmap(sn:%ld p:%p ID:0x%x %dx%d stride:%d depth:%d bpp:%d) bo(name:%d p:%p)\n",
             pPixmap->drawable.serialNumber, pPixmap, pPixmap->drawable.id,
