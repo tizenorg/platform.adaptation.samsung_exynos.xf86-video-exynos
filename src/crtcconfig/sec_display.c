@@ -555,11 +555,11 @@ secModePreInit (ScrnInfoPtr pScrn, int drm_fd)
     /* virtaul x and virtual y of the screen is ones from main lcd mode */
     pScrn->virtualX = pSecMode->main_lcd_mode.hdisplay;
     pScrn->virtualY = pSecMode->main_lcd_mode.vdisplay;
-
+#ifdef USE_XDBG
 #if DBG_DRM_EVENT
     xDbgLogDrmEventInit();
 #endif
-
+#endif
     return TRUE;
 }
 
@@ -1800,7 +1800,8 @@ secDisplayChangeMode (ScrnInfoPtr pScrn)
                              pOutput->mm_width, pOutput->mm_height))
         {
             XDBG_ERROR(MDISP,
-                       "Can't setup screen size H:%d V:%d for output: %s\n", mode->HDisplay, mode->VDisplay);
+                       "Can't setup screen size H:%d V:%d for output: %s\n",
+                       mode->HDisplay, mode->VDisplay, pOutput->name);
             if (max_mode)
                 free(max_mode);
             return FALSE;
@@ -1808,7 +1809,7 @@ secDisplayChangeMode (ScrnInfoPtr pScrn)
         if (!xf86CrtcSetModeTransform(pCrtc, mode, RR_Rotate_0, NULL, 0, 0))
         {
             XDBG_ERROR(MDISP,
-                       "Can't transform Crtc to mode: %s\n", pCrtc, mode->name);
+                       "Can't transform Crtc to mode: %s\n", mode->name);
             if (max_mode)
                 free(max_mode);
             RRScreenSizeSet(pScrn->pScreen, 640, 480, 0, 0);

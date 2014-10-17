@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fourcc.h>
 #include <drm_fourcc.h>
 
-#define C(b,m)              (((b) >> (m)) & 0xFF)
+#define C(b,m)              (char)(((b) >> (m)) & 0xFF)
 #define B(c,s)              ((((unsigned int)(c)) & 0xff) << (s))
 #define FOURCC(a,b,c,d)     (B(d,24) | B(c,16) | B(b,8) | B(a,0))
 #define FOURCC_STR(id)      C(id,0), C(id,8), C(id,16), C(id,24)

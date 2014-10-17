@@ -1004,7 +1004,7 @@ _secVirtualVideoPreProcess (ScrnInfoPtr pScrn, SECPortPrivPtr pPort,
         RegionCopy (pPort->clipBoxes, clipBoxes);
     }
 
-    XDBG_TRACE (MVA, "pDraw(0x%x, %dx%d). \n", pDraw->id, pDraw->width, pDraw->height);
+    XDBG_TRACE (MVA, "pDraw(0x%lx, %dx%d). \n", pDraw->id, pDraw->width, pDraw->height);
 
     return Success;
 }
@@ -1037,7 +1037,7 @@ _secVirtualVideoSendPortNotify (SECPortPrivPtr pPort, SECPortAttrAtom paa, INT32
     atom = _secVideoGetPortAtom (paa);
     XDBG_RETURN_VAL_IF_FAIL (atom != None, BadValue);
 
-    XDBG_TRACE (MVA, "paa(%d), value(%d)\n", paa, value);
+    XDBG_TRACE (MVA, "paa(%d), value(%d)\n", paa, (int) value);
 
     return XvdiSendPortNotify (info->pp, atom, value);
 }
@@ -1805,14 +1805,14 @@ SECVirtualVideoSetPortAttribute (ScrnInfoPtr pScrn,
         }
 
         pPort->id = (unsigned int)value;
-        XDBG_DEBUG (MVA, "id(%d) \n", value);
+        XDBG_DEBUG (MVA, "id(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _secVideoGetPortAtom (PAA_CAPTURE))
     {
         if (value < CAPTURE_MODE_NONE || value >= CAPTURE_MODE_MAX)
         {
-            XDBG_ERROR (MVA, "capture value(%d) is out of range\n", value);
+            XDBG_ERROR (MVA, "capture value(%d) is out of range\n", (int) value);
             return BadRequest;
         }
 
@@ -1848,7 +1848,7 @@ SECVirtualVideoSetPortAttribute (ScrnInfoPtr pScrn,
         info = _secVirtualVideoFindReturnBuf (pPort, value);
         if (!info)
         {
-            XDBG_WARNING (MVA, "wrong gem name(%d) returned\n", value);
+            XDBG_WARNING (MVA, "wrong gem name(%d) returned\n", (int) value);
             return Success;
         }
 
@@ -1960,7 +1960,7 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
     {
         pPort->putstill_on = TRUE;
         XDBG_SECURE (MVA, "pPort(%d) putstill on. secure(%d), capture(%d), format(%c%c%c%c)\n",
-                     pPort->index, pPort->secure, pPort->capture, FOURCC_STR (pPort->id), 60);
+                     pPort->index, pPort->secure, pPort->capture, FOURCC_STR (pPort->id));
     }
 
     pPort->need_damage = TRUE;
