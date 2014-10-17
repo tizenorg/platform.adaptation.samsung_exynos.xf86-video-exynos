@@ -45,12 +45,7 @@ XORG_DRIVER_CHECK_EXT(XV, videoproto)
 # Checks for pkg-config packages
 PKG_CHECK_MODULES(PROTO, [xproto fontsproto])
 
-if pkg-config --exists 'xorg-server >= 1.15.0'; then
-	AC_DEFINE([LATEST_XORG], 1, [define for backward compatibility with old xorg-server])
-fi
-
 sdkdir=$(pkg-config --variable=sdkdir xorg-server)
-
 
 ftests=no
 FT_CFLAGS=""

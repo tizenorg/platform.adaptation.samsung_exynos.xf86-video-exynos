@@ -502,19 +502,11 @@ SECDummyCrtcHideCursor (xf86CrtcPtr pCrtc)
     return;
 }
 
-#ifdef LATEST_XORG
-static Bool
-#else
 static void
-#endif
 SECDummyCrtcLoadCursorArgb(xf86CrtcPtr pCrtc, CARD32 *image)
 {
     XDBG_TRACE (MDOUT, "[%p]  \n", pCrtc);
-#ifdef LATEST_XORG
-    return TRUE;
-#else
     return;
-#endif
 }
 
 static const xf86CrtcFuncsRec sec_crtc_dummy_funcs =
