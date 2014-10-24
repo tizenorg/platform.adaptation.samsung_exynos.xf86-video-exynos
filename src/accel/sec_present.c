@@ -248,9 +248,7 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
 	ScreenPtr pScreen = pRRcrtc->pScreen;
 	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
 	int pipe = secModeGetCrtcPipe(pCrtc);
-    SECCrtcPrivPtr pCrtcPriv = pCrtc->driver_private;
 	PresentVblankEventPtr pEvent = NULL;
-    SECPtr pSec = SECPTR (pScrn);
 
 	Bool ret;
 
