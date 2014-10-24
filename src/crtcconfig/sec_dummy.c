@@ -753,7 +753,7 @@ secDummyCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode)
     if (pCrtcPriv->pFpsDebug == NULL)
     {
         free (pCrtcPriv);
-        return;
+        return NULL;
     }
 #endif
 
