@@ -86,6 +86,7 @@ typedef struct
     Bool bDo;
     Pixel pm;
     int alu;
+    Bool swap;
     int reverse;
     int upsidedown;
     PixmapPtr pSrcPix;
@@ -814,8 +815,24 @@ SECExaSwPrepareCopy (PixmapPtr pSrcPixmap, PixmapPtr pDstPixmap,
     int num_dst_pix = -1;
     int num_src_pix = -1;
 
-    XDBG_TRACE (MEXAS, "\n");
     memset (&gOpCopy, 0x00, sizeof (gOpCopy));
+
+    gOpCopy.swap = FALSE;
+
+    SECPixmapPriv *pSrcExaPixPriv = exaGetPixmapDriverPrivate (pSrcPixmap);
+
+    if (pSrcExaPixPriv->isFrameBuffer == 0)
+    {
+        if (pDstPixmap->drawable.width        == pSrcPixmap->drawable.width &&
+        	pDstPixmap->drawable.height       == pSrcPixmap->drawable.height &&
+        	pDstPixmap->drawable.bitsPerPixel == pSrcPixmap->drawable.bitsPerPixel)
+        {
+            gOpCopy.swap = TRUE;
+        }
+    }
+
+    XDBG_TRACE (MEXAS, "%s\n",
+    		gOpCopy.swap ? "swap" : "copy");
 
     gOpCopy.alu = alu;
     gOpCopy.pm = planemask;
@@ -860,6 +877,23 @@ SECExaSwCopy (PixmapPtr pDstPixmap, int srcX, int srcY,
     gOpCopy.dstY = dstY;
     gOpCopy.width = width;
     gOpCopy.height = height;
+
+    if (gOpCopy.swap)
+    {
+    	if( gOpCopy.srcX == gOpCopy.dstX &&
+    			 gOpCopy.srcY == gOpCopy.dstY)
+    	{
+            SECPixmapPriv *pFrontExaPixPriv = exaGetPixmapDriverPrivate (gOpCopy.pSrcPix);
+            SECPixmapPriv *pBackExaPixPriv = exaGetPixmapDriverPrivate (gOpCopy.pDstPix);
+            tbm_bo_swap(pFrontExaPixPriv->bo, pBackExaPixPriv->bo);
+            return;
+    	}
+    	else
+    	{
+    		gOpCopy.swap = FALSE;
+    	}
+    }
+
 
     if (gOpCopy.pOpSrc->isSame && gOpCopy.pOpDst->isSame)
     {
