@@ -28,6 +28,12 @@ exynos_drv_la_SOURCES += \
 	accel/sec_dri2.c
 AM_CFLAGS += -I@top_srcdir@/src/accel
 
+if ENABLE_DRI3_PRESENT
+exynos_drv_la_SOURCES += \
+	accel/sec_present.c \
+	accel/sec_dri3.c
+endif
+
 # xv
 exynos_drv_la_SOURCES += \
 	xv/sec_video_tvout.c \

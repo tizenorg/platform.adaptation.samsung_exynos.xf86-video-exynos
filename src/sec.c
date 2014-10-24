@@ -111,6 +111,8 @@ typedef enum
     OPTION_CACHABLE,
     OPTION_SCANOUT,
     OPTION_ACCEL2D,
+    OPTION_PRESENT,
+    OPTION_DRI3,
     OPTION_PARTIAL_UPDATE,
 } SECOpts;
 
@@ -128,6 +130,8 @@ static const OptionInfoRec SECOptions[] =
     { OPTION_CACHABLE, "cachable",   OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_SCANOUT,  "scanout",    OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_ACCEL2D,  "accel_2d",   OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_PRESENT,  "present",    OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_DRI3,	   "dri3",   	 OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_PARTIAL_UPDATE,  "partial_update",    OPTV_BOOLEAN, {0}, FALSE },
     { -1,              NULL,         OPTV_NONE,    {0}, FALSE }
 };
@@ -503,6 +507,20 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
             pSec->flip_bufs = flip_bufs;
         }
     }
+
+#ifdef HAVE_DRI3_PRESENT_H
+    /* present */
+    if (xf86ReturnOptValBool (pSec->Options, OPTION_PRESENT, FALSE))
+    {
+        pSec->is_present = TRUE;
+    }
+    
+    /* dri3 */
+    if (xf86ReturnOptValBool (pSec->Options, OPTION_DRI3, FALSE))
+    {
+        pSec->is_dri3 = TRUE;
+    }
+#endif
 
     /* rotate */
     pSec->rotate = RR_Rotate_0;
@@ -1025,6 +1043,27 @@ SECScreenInit (ScreenPtr pScreen, int argc, char **argv)
                                 "DRI2 initialization failed\n");
                 }
             }
+
+#ifdef HAVE_DRI3_PRESENT_H
+            if (pSec->is_present)
+            {
+            	if(!secPresentScreenInit(pScreen))
+            	{
+                    xf86DrvMsg (pScrn->scrnIndex, X_WARNING,
+                                "Present initialization failed\n");
+                }
+            }
+
+            /* init the dri3 */
+            if (pSec->is_dri3)
+            {
+                if (!secDri3ScreenInit (pScreen))
+                {
+                    xf86DrvMsg (pScrn->scrnIndex, X_WARNING,
+                                "DRI3 initialization failed\n");
+                }
+            }
+#endif
         }
     }
 
@@ -1244,9 +1283,8 @@ _secFbFreeBoData(void* data)
     bo_data = NULL;
 }
 
-
 static tbm_bo
-_secFbCreateBo (SECFbPtr pFb, int x, int y, int width, int height)
+_secFbCreateBo2 (SECFbPtr pFb, int x, int y, int width, int height, tbm_bo prev_bo)
 {
     XDBG_RETURN_VAL_IF_FAIL ((pFb != NULL), NULL);
     XDBG_RETURN_VAL_IF_FAIL ((width > 0), NULL);
@@ -1269,8 +1307,21 @@ _secFbCreateBo (SECFbPtr pFb, int x, int y, int width, int height)
     else
         flag = TBM_BO_DEFAULT;
 
-    bo = tbm_bo_alloc (pSec->tbm_bufmgr, pitch*height, flag);
-    XDBG_GOTO_IF_FAIL (bo != NULL, fail);
+    if (prev_bo != NULL)
+    {
+        XDBG_RETURN_VAL_IF_FAIL (tbm_bo_size(prev_bo)  >= (pitch*height), NULL);
+
+        tbm_bo_delete_user_data(prev_bo, TBM_BO_DATA_FB);
+
+        /* TODO: check flags*/
+
+    	bo = prev_bo;
+    }
+    else
+    {
+        bo = tbm_bo_alloc (pSec->tbm_bufmgr, pitch*height, flag);
+        XDBG_GOTO_IF_FAIL (bo != NULL, fail);
+    }
 
     /* memset 0x0 */
     bo_handle1 = tbm_bo_map (bo, TBM_DEVICE_CPU, TBM_OPTION_WRITE);
@@ -1333,6 +1384,12 @@ fail:
     }
 
     return NULL;
+}
+
+static tbm_bo
+_secFbCreateBo (SECFbPtr pFb, int x, int y, int width, int height)
+{
+	return _secFbCreateBo2 (pFb, x, y, width, height, NULL);
 }
 
 static tbm_bo
@@ -1755,6 +1812,16 @@ secRenderBoCreate (ScrnInfoPtr pScrn, int width, int height)
     SECPtr pSec = SECPTR (pScrn);
 
     return _secFbCreateBo(pSec->pFb, -1, -1, width, height);
+}
+
+int
+secSwapToRenderBo(ScrnInfoPtr pScrn, int width, int height, tbm_bo carr_bo)
+{
+    SECPtr pSec = SECPTR (pScrn);
+
+    tbm_bo tbo = _secFbCreateBo2(pSec->pFb, -1, -1, width, height, carr_bo);
+
+	return tbo ? 1 : 0;
 }
 
 tbm_bo

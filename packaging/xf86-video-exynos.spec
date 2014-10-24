@@ -31,7 +31,6 @@ ExclusiveArch: %arm
 %description
 This package provides the driver for the Samsung display device exynos
 
-
 %prep
 %setup -q
 
@@ -40,7 +39,7 @@ This package provides the driver for the Samsung display device exynos
 rm -rf %{buildroot}
 
 %autogen --disable-static \
-	CFLAGS="${CFLAGS} -Wall -Werror -mfpu=neon -mfloat-abi=softfp" LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--as-needed"
+	CFLAGS="${CFLAGS} -Wall -Werror -mfpu=neon -DNO_CRTC_MODE -mfloat-abi=softfp" LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--as-needed"
 
 
 make %{?jobs:-j%jobs}

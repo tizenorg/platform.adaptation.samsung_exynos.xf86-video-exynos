@@ -1004,7 +1004,7 @@ _secVirtualVideoPreProcess (ScrnInfoPtr pScrn, SECPortPrivPtr pPort,
         RegionCopy (pPort->clipBoxes, clipBoxes);
     }
 
-    XDBG_TRACE (MVA, "pDraw(0x%x, %dx%d). \n", pDraw->id, pDraw->width, pDraw->height);
+    XDBG_TRACE (MVA, "pDraw(0x%lx, %dx%d). \n", pDraw->id, pDraw->width, pDraw->height);
 
     return Success;
 }
@@ -1037,7 +1037,7 @@ _secVirtualVideoSendPortNotify (SECPortPrivPtr pPort, SECPortAttrAtom paa, INT32
     atom = _secVideoGetPortAtom (paa);
     XDBG_RETURN_VAL_IF_FAIL (atom != None, BadValue);
 
-    XDBG_TRACE (MVA, "paa(%d), value(%d)\n", paa, value);
+    XDBG_TRACE (MVA, "paa(%d), value(%d)\n", paa, (int) value);
 
     return XvdiSendPortNotify (info->pp, atom, value);
 }
@@ -1805,14 +1805,14 @@ SECVirtualVideoSetPortAttribute (ScrnInfoPtr pScrn,
         }
 
         pPort->id = (unsigned int)value;
-        XDBG_DEBUG (MVA, "id(%d) \n", value);
+        XDBG_DEBUG (MVA, "id(%d) \n", (int) value);
         return Success;
     }
     else if (attribute == _secVideoGetPortAtom (PAA_CAPTURE))
     {
         if (value < CAPTURE_MODE_NONE || value >= CAPTURE_MODE_MAX)
         {
-            XDBG_ERROR (MVA, "capture value(%d) is out of range\n", value);
+            XDBG_ERROR (MVA, "capture value(%d) is out of range\n", (int) value);
             return BadRequest;
         }
 
@@ -1848,7 +1848,7 @@ SECVirtualVideoSetPortAttribute (ScrnInfoPtr pScrn,
         info = _secVirtualVideoFindReturnBuf (pPort, value);
         if (!info)
         {
-            XDBG_WARNING (MVA, "wrong gem name(%d) returned\n", value);
+            XDBG_WARNING (MVA, "wrong gem name(%d) returned\n", (int) value);
             return Success;
         }
 
@@ -1960,7 +1960,7 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
     {
         pPort->putstill_on = TRUE;
         XDBG_SECURE (MVA, "pPort(%d) putstill on. secure(%d), capture(%d), format(%c%c%c%c)\n",
-                     pPort->index, pPort->secure, pPort->capture, FOURCC_STR (pPort->id), 60);
+                     pPort->index, pPort->secure, pPort->capture, FOURCC_STR (pPort->id));
     }
 
     pPort->need_damage = TRUE;
@@ -2304,67 +2304,64 @@ _secCaptureCloseConverter (SECPortPrivPtr pPort)
     XDBG_TRACE (MVA, "done. \n");
 }
 
-static Bool
-secCaptureConvertImage  (SECPortPrivPtr pPort,  SECVideoBuf *inbuf, int csc_range)
+static Bool secCaptureConvertImage(SECPortPrivPtr pPort, SECVideoBuf *inbuf,  int csc_range)
 {
-     SECCvtProp src_prop = {0,}, dst_prop = {0,};
-     SECVideoBuf *outbuf;
+    SECCvtProp src_prop = { 0, }, dst_prop = { 0, };
+    SECVideoBuf *outbuf = NULL;
 
-     pPort->secure=0;
+    pPort->secure = 0;
 
-     src_prop.id = inbuf->id;
-     src_prop.width = inbuf->width;
-     src_prop.height = inbuf->height;
-     src_prop.crop = inbuf->crop;
+    src_prop.id = inbuf->id;
+    src_prop.width = inbuf->width;
+    src_prop.height = inbuf->height;
+    src_prop.crop = inbuf->crop;
 
-     dst_prop.id = FOURCC_RGB32;
-     dst_prop.width = inbuf->width;
-     dst_prop.height = inbuf->height;
-     dst_prop.crop = inbuf->crop;
+    dst_prop.id = FOURCC_RGB32;
+    dst_prop.width = inbuf->width;
+    dst_prop.height = inbuf->height;
+    dst_prop.crop = inbuf->crop;
 
-     dst_prop.degree = 0;
-     dst_prop.hflip = 0;
-     dst_prop.vflip = 0;
-     dst_prop.secure = pPort->secure;
-     dst_prop.csc_range = 0;// pPort->csc_range;
+    dst_prop.degree = 0;
+    dst_prop.hflip = 0;
+    dst_prop.vflip = 0;
+    dst_prop.secure = pPort->secure;
+    dst_prop.csc_range = 0;// pPort->csc_range;
 
-     if (!secCvtEnsureSize (&src_prop, &dst_prop))
-         goto fail_to_convert;
+    if (!secCvtEnsureSize(&src_prop, &dst_prop))
+        goto fail_to_convert;
+
+    XDBG_GOTO_IF_FAIL(pPort != NULL, fail_to_convert);
 
     outbuf = pPort->capture_dstbuf;
-     if (outbuf == NULL)
-     {
-         outbuf = secUtilAllocVideoBuffer (pPort->pScrn, FOURCC_RGB32,
-                                          dst_prop.width, dst_prop.height,
-                                          FALSE, FALSE, pPort->secure);
-         outbuf->crop = dst_prop.crop;
-     }
-    XDBG_GOTO_IF_FAIL (outbuf != NULL, fail_to_convert);
+    if (outbuf == NULL)
+    {
+        outbuf = secUtilAllocVideoBuffer (pPort->pScrn, FOURCC_RGB32,
+                dst_prop.width, dst_prop.height,
+                FALSE, FALSE, pPort->secure);
+        outbuf->crop = dst_prop.crop;
+    }
+    XDBG_GOTO_IF_FAIL(outbuf != NULL, fail_to_convert);
 
-     if (!outbuf)
-         return FALSE;
+    _secCaptureEnsureConverter(pPort);
+    XDBG_GOTO_IF_FAIL(pPort->cvt2 != NULL, fail_to_convert);
 
-     _secCaptureEnsureConverter (pPort);
-     XDBG_GOTO_IF_FAIL (pPort->cvt2 != NULL, fail_to_convert);
+    if (!secCvtSetProperpty(pPort->cvt2, &src_prop, &dst_prop))
+        goto fail_to_convert;
 
-     if (!secCvtSetProperpty (pPort->cvt2, &src_prop, &dst_prop))
-         goto fail_to_convert;
+    if (!secCvtConvert(pPort->cvt2, inbuf, outbuf))
+        goto fail_to_convert;
 
-     if (!secCvtConvert (pPort->cvt2, inbuf, outbuf))
-         goto fail_to_convert;
+    secUtilVideoBufferUnref (outbuf);
 
-
-     secUtilVideoBufferUnref (outbuf);
-
-     return TRUE;
+    return TRUE;
 
 fail_to_convert:
 
-     if (outbuf)
-         secUtilVideoBufferUnref (outbuf);
+    if (outbuf)
+        secUtilVideoBufferUnref (outbuf);
 
-     _secCaptureCloseConverter (pPort);
+    _secCaptureCloseConverter(pPort);
 
-     return FALSE;
- }
+    return FALSE;
+}
 

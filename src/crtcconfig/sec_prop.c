@@ -610,7 +610,7 @@ secPropSetFbVisible (xf86OutputPtr pOutput, Atom property, RRPropertyValuePtr va
     if (value->format != 8)
         return TRUE;
 
-    XDBG_TRACE (MPROP, "%s \n", value->data);
+    XDBG_TRACE (MPROP, "%s \n", (char *) value->data);
 
     secPropFbVisible (value->data, FALSE, value, pOutput->scrn);
 
@@ -636,7 +636,7 @@ secPropSetVideoOffset (xf86OutputPtr pOutput, Atom property, RRPropertyValuePtr 
     if (value->format != 8)
         return TRUE;
 
-    XDBG_TRACE (MPROP, "%s \n", value->data);
+    XDBG_TRACE (MPROP, "%s \n", (char *) value->data);
 
     secPropVideoOffset (value->data, value, pOutput->scrn);
 
@@ -703,7 +703,7 @@ secPropSetScreenRotate (xf86OutputPtr pOutput, Atom property, RRPropertyValuePtr
     if (value->format != 8)
         return TRUE;
 
-    XDBG_TRACE (MPROP, "%s \n", value->data);
+    XDBG_TRACE (MPROP, "%s \n", (char *) value->data);
 
     secPropScreenRotate (value->data, value, pOutput->scrn);
 

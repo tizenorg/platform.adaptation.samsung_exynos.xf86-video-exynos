@@ -648,7 +648,9 @@ secUtilFlushDump (void *d)
     if (!is_dir)
     {
         DIR *dp;
-        mkdir (dir, 0755);
+        if(mkdir (dir, 0755))
+            return;
+
         if (!(dp = opendir (dir)))
         {
             ErrorF ("failed: open'%s'\n", dir);
@@ -1482,6 +1484,8 @@ secUtilListAdd (void *list, void *key, void *user_data)
         return list;
 
     data = malloc (sizeof (ListData));
+    XDBG_RETURN_VAL_IF_FAIL (data != NULL, NULL);
+
     data->key = key;
     data->data = user_data;
 
@@ -1814,7 +1818,7 @@ _secUtilAllocSecureBuffer (ScrnInfoPtr scrn, int size, int flags)
     arg_flink.handle = arg_handle.handle;
     if (drmIoctl (pSec->drm_fd, DRM_IOCTL_GEM_FLINK, &arg_flink))
     {
-        XDBG_ERRNO (MVBUF, "failed : flink gem (%ld)\n", arg_handle.handle);
+        XDBG_ERRNO (MVBUF, "failed : flink gem (%lu)\n", (unsigned long) arg_handle.handle);
         goto done_secure_buffer;
     }
     XDBG_GOTO_IF_FAIL (arg_flink.name > 0, done_secure_buffer);
@@ -1827,7 +1831,7 @@ done_secure_buffer:
     {
         arg_close.handle = arg_handle.handle;
         if (drmIoctl (pSec->drm_fd, DRM_IOCTL_GEM_CLOSE, &arg_close))
-            XDBG_ERRNO (MVBUF, "failed : close gem (%ld)\n", arg_handle.handle);
+            XDBG_ERRNO (MVBUF, "failed : close gem (%lu)\n", (unsigned long) arg_handle.handle);
     }
 
     if (tzmem_get.fd >= 0)

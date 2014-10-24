@@ -101,5 +101,5 @@ SECVideoBuf* secLayerGetBuffer (SECLayer *layer);
 
 void        secLayerVBlankEventHandler (unsigned int frame, unsigned int tv_sec,
                                         unsigned int tv_usec, void *event_data);
-
+Bool        secLayerExistNotifyFunc (SECLayer* layer, NotifyFunc func);
 #endif /* __SEC_LAYER_H__ */

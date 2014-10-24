@@ -759,7 +759,7 @@ secOutputDrmUpdate (ScrnInfoPtr pScrn)
                 ret = TRUE;
 #endif
         SECOutputPrivPtr pOutputPriv = NULL;
-        SECOutputPrivPtr pCur, pNext;
+        SECOutputPrivPtr pCur = NULL, pNext = NULL;
         drmModeConnectorPtr koutput;
         drmModeEncoderPtr kencoder;
         char *conn_str[] = {"connected", "disconnected", "unknow"};
@@ -1050,7 +1050,7 @@ secOutputGetPrivateForConnType (ScrnInfoPtr pScrn, int connect_type)
 
     for (i = 0; i < pSecMode->mode_res->count_connectors; i++)
     {
-        SECOutputPrivPtr pCur, pNext;
+        SECOutputPrivPtr pCur = NULL, pNext = NULL;
 
         xorg_list_for_each_entry_safe (pCur, pNext, &pSecMode->outputs, link)
         {

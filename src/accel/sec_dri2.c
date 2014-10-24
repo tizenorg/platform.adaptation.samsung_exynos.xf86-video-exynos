@@ -667,7 +667,7 @@ _resetBufPixmap (DrawablePtr pDraw, DRI2BufferPtr pBuf)
         pNewPix = _reuseBackBufPixmap(pBuf, pDraw, canFlip, &reuse);
         if (pNewPix == NULL)
         {
-            XDBG_WARNING (MDRI2, "Error pixmap is null\n", pipe);
+            XDBG_WARNING (MDRI2, "Error pixmap is null\n");
             return FALSE;
         }
 
@@ -683,7 +683,7 @@ _resetBufPixmap (DrawablePtr pDraw, DRI2BufferPtr pBuf)
     pBuf->name = _getName (pNewPix);
     pBuf->flags = _getBufferFlag(pDraw, canFlip);
 
-    XDBG_TRACE (MDRI2,"id:0x%x(%d) can_flip:%d attach:%d, name:%d, flags:0x%x geo(%dx%d+%d+%d)\n",
+    XDBG_TRACE (MDRI2,"id:0x%lx(%d) can_flip:%d attach:%d, name:%d, flags:0x%x geo(%dx%d+%d+%d)\n",
                 pDraw->id, pDraw->type,
                 pBufPriv->canFlip,
                 pBuf->attachment, pBuf->name, pBuf->flags,
@@ -966,7 +966,9 @@ _doPageFlip (DrawablePtr pDraw, int crtc_pipe, xf86CrtcPtr pCrtc, DRI2FrameEvent
     /* Reset buffer position */
     secRenderBoSetPos(pBackExaPixPriv->bo, pDraw->x, pDraw->y);
 
-    if (!secModePageFlip (pScrn, NULL, pEvent, crtc_pipe, pBackExaPixPriv->bo))
+    if (!secModePageFlip (pScrn, NULL, pEvent, crtc_pipe, pBackExaPixPriv->bo,
+    		pEvent->pRegion, pEvent->client_idx, pEvent->drawable_id,
+    		secDri2FlipEventHandler))
     {
         XDBG_WARNING (MDRI2, "fail to secModePageFlip\n");
         return FALSE;
@@ -1134,7 +1136,7 @@ _SendSyncDrawDoneMessage(ScreenPtr screen, ClientPtr client, DrawablePtr pDraw)
     event.u.clientMessage.u.l.longs2 = pDraw->width; // window's width
     event.u.clientMessage.u.l.longs3 = pDraw->height; // window's height
 
-    XDBG_DEBUG(MDRI2, "client=%d pDraw->id=%x width=%d height=%d\n", client->index, pDraw->id, pDraw->width, pDraw->height);
+    XDBG_DEBUG(MDRI2, "client=%d pDraw->id=%lx width=%d height=%d\n", client->index, pDraw->id, pDraw->width, pDraw->height);
 
     DeliverEventsToWindow(dev, screen->root, &event, 1, SubstructureRedirectMask | SubstructureNotifyMask, NullGrab);
 }
@@ -1212,14 +1214,14 @@ SECDri2CreateBuffer (DrawablePtr pDraw, unsigned int attachment, unsigned int fo
     pBufPriv->pPixmap = pPix;
     pBufPriv->pScreen = pScreen;
 
-    XDBG_DEBUG(MDRI2, "id:0x%x(%d) attach:%d, name:%d, flags:0x%x, flip:%d geo(%dx%d+%d+%d)\n",
+    XDBG_DEBUG(MDRI2, "id:0x%lx(%d) attach:%d, name:%d, flags:0x%x, flip:%d geo(%dx%d+%d+%d)\n",
                pDraw->id, pDraw->type,
                pBuf->attachment, pBuf->name, pBuf->flags, pBufPriv->canFlip,
                pDraw->width, pDraw->height, pDraw->x, pDraw->y);
 
     return pBuf;
 fail:
-    XDBG_WARNING(MDRI2, "Failed: id:0x%x(%d) attach:%d,geo(%dx%d+%d+%d)\n",
+    XDBG_WARNING(MDRI2, "Failed: id:0x%lx(%d) attach:%d,geo(%dx%d+%d+%d)\n",
                  pDraw->id, pDraw->type, attachment, pDraw->width, pDraw->height, pDraw->x, pDraw->y);
     if (pPix)
     {
@@ -1385,7 +1387,7 @@ SECDri2ScheduleSwapWithRegion (ClientPtr pClient, DrawablePtr pDraw,
 
     swap_type = pFrameEvent->type;
 
-    XDBG_DEBUG (MSEC, "dump_mode(%x) dump_xid(0x%x:0x%x) swap_type(%d)\n",
+    XDBG_DEBUG (MSEC, "dump_mode(%x) dump_xid(0x%lx:0x%lx) swap_type(%d)\n",
                 pSec->dump_mode, pSec->dump_xid, pDraw->id, swap_type);
 
     if ((pSec->dump_mode & XBERC_DUMP_MODE_DRAWABLE) &&
@@ -1769,7 +1771,7 @@ SECDri2ReuseBufferNotify (DrawablePtr pDraw, DRI2BufferPtr pBuf)
         }
     }
 
-    XDBG_DEBUG(MDRI2, "id:0x%x(%d) attach:%d, name:%d, flags:0x%x, flip:%d, geo(%dx%d+%d+%d)\n",
+    XDBG_DEBUG(MDRI2, "id:0x%lx(%d) attach:%d, name:%d, flags:0x%x, flip:%d, geo(%dx%d+%d+%d)\n",
                pDraw->id, pDraw->type,
                pBuf->attachment, pBuf->name, pBuf->flags, pBufPriv->canFlip,
                pDraw->width, pDraw->height, pDraw->x, pDraw->y);

@@ -482,7 +482,7 @@ secWbHandleIppEvent (int fd, unsigned int *buf_idx, void *data)
 
     if (wb->status == STATUS_STOPPED)
     {
-        XDBG_ERROR (MWB, "stopped. ignore a event.\n", data);
+        XDBG_ERROR (MWB, "stopped. ignore a event. %p\n", data);
         return;
     }
 
@@ -760,12 +760,13 @@ _secWbCloseDrm (SECWb *wb)
         buf.buf_id = i;
 
         if (wb->dst_buf[i])
-            for (j = 0; j < EXYNOS_DRM_PLANAR_MAX && j < PLANAR_CNT; j++)
+            for (j = 0; j < EXYNOS_DRM_PLANAR_MAX; j++)
                 buf.handle[j] = wb->dst_buf[i]->handles[j];
 
-        secDrmIppQueueBuf (wb->pScrn, &buf);
+       secDrmIppQueueBuf (wb->pScrn, &buf);
 
-        wb->queued[i] = FALSE;
+       wb->queued[i] = FALSE;
+
     }
 
     CLEAR (ctrl);

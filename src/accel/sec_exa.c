@@ -334,7 +334,8 @@ SECExaModifyPixmapHeader (PixmapPtr pPixmap, int width, int height,
         prop.crop.width = width;
         prop.crop.height = height;
 
-        secCvtEnsureSize (NULL, &prop);
+        if (!secCvtEnsureSize (NULL, &prop))
+            return FALSE;
 
         privPixmap->bo = secRenderBoCreate(pScrn, prop.width, prop.height);
         if (!privPixmap->bo)
@@ -389,7 +390,7 @@ SECExaModifyPixmapHeader (PixmapPtr pPixmap, int width, int height,
         privPixmap->bo = tbm_bo_alloc (pSec->tbm_bufmgr, lSizeInBytes, TBM_BO_DEFAULT);
         if (privPixmap->bo == NULL)
         {
-            XDBG_ERROR(MEXA, "Error on allocating BufferObject. size:%d\n",lSizeInBytes);
+            XDBG_ERROR(MEXA, "Error on allocating BufferObject. size:%ld\n",lSizeInBytes);
             return FALSE;
         }
         pSec->pix_dri2_back = pSec->pix_dri2_back + lSizeInBytes;
@@ -410,7 +411,7 @@ SECExaModifyPixmapHeader (PixmapPtr pPixmap, int width, int height,
         privPixmap->bo = tbm_bo_alloc (pSec->tbm_bufmgr, lSizeInBytes, TBM_BO_DEFAULT);
         if (privPixmap->bo == NULL)
         {
-            XDBG_ERROR(MEXA, "Error on allocating BufferObject. size:%d\n",lSizeInBytes);
+            XDBG_ERROR(MEXA, "Error on allocating BufferObject. size:%ld\n",lSizeInBytes);
             return FALSE;
         }
         pSec->pix_backing_pixmap = pSec->pix_backing_pixmap + lSizeInBytes;
@@ -452,7 +453,7 @@ SECExaModifyPixmapHeader (PixmapPtr pPixmap, int width, int height,
             privPixmap->bo = tbm_bo_alloc (pSec->tbm_bufmgr, lSizeInBytes, TBM_BO_DEFAULT);
             if (privPixmap->bo == NULL)
             {
-                XDBG_ERROR(MEXA, "Error on allocating BufferObject. size:%d\n",lSizeInBytes);
+                XDBG_ERROR(MEXA, "Error on allocating BufferObject. size:%ld\n",lSizeInBytes);
                 return FALSE;
             }
         }

@@ -244,8 +244,8 @@ ExaBox* _g2dBoxAdd (struct xorg_list *l, BoxPtr b1, BoxPtr b2)
 
 void _g2dBoxMerge (struct xorg_list *l, struct xorg_list* b, struct xorg_list* t)
 {
-    ExaBox *b1, *b2;
-    ExaBox* r=NULL;
+    ExaBox *b1 = NULL, *b2 = NULL;
+    ExaBox* r = NULL;
 
     xorg_list_for_each_entry (b1, b, link)
     {
@@ -264,7 +264,7 @@ void _g2dBoxMerge (struct xorg_list *l, struct xorg_list* b, struct xorg_list* t
 
 void _g2dBoxMove (struct xorg_list* l, int tx, int ty)
 {
-    ExaBox *b;
+    ExaBox *b = NULL;
 
     xorg_list_for_each_entry (b, l, link)
     {
@@ -274,7 +274,7 @@ void _g2dBoxMove (struct xorg_list* l, int tx, int ty)
 
 void _g2dBoxRemoveAll (struct xorg_list* l)
 {
-    ExaBox *ref, *next;
+    ExaBox *ref = NULL, *next = NULL;
 
     xorg_list_for_each_entry_safe (ref, next, l, link)
     {
@@ -298,7 +298,7 @@ int _g2dBoxIsOne (struct xorg_list* l)
 
 void _g2dBoxPrint (ExaBox* sb1, const char* name)
 {
-    ExaBox *b;
+    ExaBox *b = NULL;
 
     xorg_list_for_each_entry (b, &sb1->link, link)
     {
@@ -644,7 +644,7 @@ static void _g2dFinishAccess (PixmapPtr pPix, int index)
 void
 _g2dDoDraw (struct xorg_list *l, DoDrawProcPtrEx do_draw, void* data)
 {
-    ExaBox *box;
+    ExaBox *box = NULL;
     xorg_list_for_each_entry (box, l, link)
     {
         do_draw (box, data);
@@ -706,7 +706,9 @@ _g2dDoCopy (ExaBox* box, void* data)
                 box->box.x2,
                 box->box.y2,
                 gOpCopy.srcX,
-                gOpCopy.srcY);
+                gOpCopy.srcY,
+                gOpCopy.dstX,
+                gOpCopy.dstY);
 
     srcX = gOpCopy.srcX + box->box.x1 - box->pSrc->pos.x1;
     srcY = gOpCopy.srcY + box->box.y1 - box->pSrc->pos.y1;
@@ -1003,7 +1005,7 @@ SECExaG2dPrepareSolid (PixmapPtr pPixmap, int alu, Pixel planemask, Pixel fg)
 
 bail:
     XDBG_TRACE (MEXAH, "FAIL: pix:%p hint:%d, num_pix:%d\n",
-                pPixmap, index, pPixmap->usage_hint, gOpSolid.pOpDst->num);
+                pPixmap, pPixmap->usage_hint, gOpSolid.pOpDst->num);
     gOpSolid.bDo = DO_DRAW_NONE;
     gOpSolid.pGC = NULL;
 
@@ -1128,10 +1130,10 @@ SECExaG2dPrepareCopy (PixmapPtr pSrcPixmap, PixmapPtr pDstPixmap,
 
 bail:
     XDBG_TRACE (MEXAH, "FAIL\n");
-    XDBG_TRACE (MEXAH, "   SRC pix:%p, index:%d, hint:%d, num_pix:%d\n",
-                pSrcPixmap, index, pSrcPixmap->usage_hint, num_src_pix);
-    XDBG_TRACE (MEXAH, "   DST pix:%p, index:%d, hint:%d, num_pix:%d\n",
-                pDstPixmap, index, pDstPixmap->usage_hint, num_dst_pix);
+    XDBG_TRACE (MEXAH, "   SRC pix:%p, hint:%d, num_pix:%d\n",
+                pSrcPixmap, pSrcPixmap->usage_hint, num_src_pix);
+    XDBG_TRACE (MEXAH, "   DST pix:%p, hint:%d, num_pix:%d\n",
+                pDstPixmap, pDstPixmap->usage_hint, num_dst_pix);
     gOpCopy.bDo = DO_DRAW_NONE;
 
     return TRUE;

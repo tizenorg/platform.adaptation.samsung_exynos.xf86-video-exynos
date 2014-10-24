@@ -169,7 +169,7 @@ static OpDFS gOpDFS;
 
 ExaBox* _swBoxAdd (struct xorg_list *l, BoxPtr b1, BoxPtr b2)
 {
-    ExaBox* rgn;
+    ExaBox* rgn = NULL;
 
     rgn = calloc (1, sizeof (ExaBox));
     rgn->state = secUtilBoxIntersect (&rgn->box, b1, b2);
@@ -185,7 +185,7 @@ ExaBox* _swBoxAdd (struct xorg_list *l, BoxPtr b1, BoxPtr b2)
 
 void _swBoxMerge (struct xorg_list *l, struct xorg_list* b, struct xorg_list* t)
 {
-    ExaBox *b1, *b2;
+    ExaBox *b1 = NULL, *b2 = NULL;
     ExaBox* r=NULL;
 
     xorg_list_for_each_entry (b1, b, link)
@@ -205,7 +205,7 @@ void _swBoxMerge (struct xorg_list *l, struct xorg_list* b, struct xorg_list* t)
 
 void _swBoxMove (struct xorg_list* l, int tx, int ty)
 {
-    ExaBox *b;
+    ExaBox *b = NULL;
 
     xorg_list_for_each_entry (b, l, link)
     {
@@ -215,7 +215,7 @@ void _swBoxMove (struct xorg_list* l, int tx, int ty)
 
 void _swBoxRemoveAll (struct xorg_list* l)
 {
-    ExaBox *ref, *next;
+    ExaBox *ref = NULL, *next = NULL;
 
     xorg_list_for_each_entry_safe (ref, next, l, link)
     {
@@ -239,7 +239,7 @@ int _swBoxIsOne (struct xorg_list* l)
 
 void _swBoxPrint (ExaBox* sb1, const char* name)
 {
-    ExaBox *b;
+    ExaBox *b = NULL;
 
     xorg_list_for_each_entry (b, &sb1->link, link)
     {
@@ -317,7 +317,7 @@ static ExaOpInfo* _swPrepareAccess (PixmapPtr pPix, int index)
             if (num_bo == 0)
             {
                 num_bo = 1;
-                bos = (tbm_bo *)calloc(1, sizeof(tbm_bo *));
+                bos = (tbm_bo *)calloc(1, sizeof(tbm_bo));
                 bos[0] = pSec->pFb->default_bo;
             }
 #endif //NO_CRTC_MODE
@@ -439,7 +439,7 @@ static void _swFinishAccess (PixmapPtr pPix, int index)
 void
 _swDoDraw (struct xorg_list *l, DoDrawProcPtrEx do_draw, void* data)
 {
-    ExaBox *box;
+    ExaBox *box = NULL;
     xorg_list_for_each_entry (box, l, link)
     {
         do_draw (box, data);
@@ -486,7 +486,9 @@ _swDoCopy (ExaBox* box, void* data)
                 box->box.x2,
                 box->box.y2,
                 gOpCopy.srcX,
-                gOpCopy.srcY);
+                gOpCopy.srcY,
+                gOpCopy.dstX,
+                gOpCopy.dstY);
 
     srcX = gOpCopy.srcX + box->box.x1 - box->pSrc->pos.x1;
     srcY = gOpCopy.srcY + box->box.y1 - box->pSrc->pos.y1;
@@ -725,7 +727,7 @@ SECExaSwPrepareSolid (PixmapPtr pPixmap, int alu, Pixel planemask, Pixel fg)
 
 bail:
     XDBG_TRACE (MEXAS, "FAIL: pix:%p hint:%d, num_pix:%d\n",
-                pPixmap, index, pPixmap->usage_hint, gOpSolid.pOpDst->num);
+                pPixmap, pPixmap->usage_hint, gOpSolid.pOpDst->num);
     gOpSolid.bDo = FALSE;
     gOpSolid.pGC = NULL;
 
@@ -833,10 +835,10 @@ SECExaSwPrepareCopy (PixmapPtr pSrcPixmap, PixmapPtr pDstPixmap,
 
 bail:
     XDBG_TRACE (MEXAS, "FAIL\n");
-    XDBG_TRACE (MEXAS, "   SRC pix:%p, index:%d, hint:%d, num_pix:%d\n",
-                pSrcPixmap, index, pSrcPixmap->usage_hint, num_src_pix);
-    XDBG_TRACE (MEXAS, "   DST pix:%p, index:%d, hint:%d, num_pix:%d\n",
-                pDstPixmap, index, pDstPixmap->usage_hint, num_dst_pix);
+    XDBG_TRACE (MEXAS, "   SRC pix:%p, hint:%d, num_pix:%d\n",
+                pSrcPixmap, pSrcPixmap->usage_hint, num_src_pix);
+    XDBG_TRACE (MEXAS, "   DST pix:%p, hint:%d, num_pix:%d\n",
+                pDstPixmap, pDstPixmap->usage_hint, num_dst_pix);
     gOpCopy.bDo = FALSE;
 
     return TRUE;

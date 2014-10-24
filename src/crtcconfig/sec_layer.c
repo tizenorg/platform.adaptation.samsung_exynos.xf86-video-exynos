@@ -577,6 +577,24 @@ secLayerRemoveNotifyFunc (SECLayer* layer, NotifyFunc func)
 }
 
 Bool
+secLayerExistNotifyFunc (SECLayer* layer, NotifyFunc func)
+{
+    NotifyFuncData *data = NULL, *data_next = NULL;
+
+    XDBG_RETURN_VAL_IF_FAIL (layer != NULL, FALSE);
+    XDBG_RETURN_VAL_IF_FAIL (func != NULL, FALSE);
+
+    xorg_list_for_each_entry_safe (data, data_next, &layer->noti_data, link)
+    {
+        if (data->func == func)
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+Bool
 secLayerIsVisible (SECLayer *layer)
 {
     XDBG_RETURN_VAL_IF_FAIL (layer != NULL, FALSE);

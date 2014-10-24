@@ -1744,7 +1744,7 @@ secCrtcInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num)
 
     pCrtcPriv->pCrtc = pCrtc;
 
-#if 1
+#ifdef USE_XDBG
     pCrtcPriv->pFpsDebug = xDbgLogFpsDebugCreate ();
     if (pCrtcPriv->pFpsDebug == NULL)
     {
@@ -2014,7 +2014,7 @@ Bool
 secCrtcCursorEnable (ScrnInfoPtr pScrn, Bool enable)
 {
     SECModePtr pSecMode = (SECModePtr) SECPTR (pScrn)->pSecMode;
-    SECCrtcPrivPtr pCur, pNext;
+    SECCrtcPrivPtr pCur = NULL, pNext;
 
     xorg_list_for_each_entry_safe (pCur, pNext, &pSecMode->crtcs, link)
     {
