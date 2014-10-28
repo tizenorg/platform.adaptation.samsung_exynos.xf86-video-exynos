@@ -33,6 +33,11 @@ AC_ARG_ENABLE(pciaccess,
                              [Enable use of libpciaccess (default: disabled)]),
 			     [PCIACCESS=$enableval], [PCIACCESS=no])
 
+AC_ARG_ENABLE(dri3,
+	      AS_HELP_STRING([--enable-dri3],
+                             [Enable DRI3 backend (default: disabled)]),
+			     [DRI3=$enableval], [DRI3=no])
+
 AC_ARG_ENABLE(ftests,
 AS_HELP_STRING([--enable-ftests], [Enable functional tests (default: no)]),
                 [FT="$enableval"], [FT="no"])
@@ -95,10 +100,12 @@ fi
 # Checks for header files.
 AC_HEADER_STDC
 
-AC_CHECK_FILES( /usr/include/xorg/dri3.h /usr/include/xorg/present.h, [dri3=yes], [dri3=no]) 
-AM_CONDITIONAL(ENABLE_DRI3_PRESENT, [test "x$dri3" = xyes])
-if test "x$dri3" = xyes; then
-    AC_DEFINE(HAVE_DRI3_PRESENT_H, 1, [ DRI3 and Present is enabled ])
+if test "x$DRI3" = xyes; then
+    AC_CHECK_FILES( /usr/include/xorg/dri3.h /usr/include/xorg/present.h, [dri3=yes], [dri3=no]) 
+    AM_CONDITIONAL(ENABLE_DRI3_PRESENT, [test "x$dri3" = xyes])
+    if test "x$dri3" = xyes; then
+        AC_DEFINE(HAVE_DRI3_PRESENT_H, 1, [ DRI3 and Present is enabled ])
+    fi
 fi
 
 AC_SUBST([EXYNOS_CFLAGS])
