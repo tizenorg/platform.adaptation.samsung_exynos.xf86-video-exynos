@@ -34,7 +34,7 @@ This package provides the driver for the Samsung display device exynos
 %build
 rm -rf %{buildroot}
 
-%autogen --disable-static \
+%autogen --disable-static --enable-dri3 \
 	CFLAGS="${CFLAGS} -Wall -mfpu=neon -DNO_CRTC_MODE -mfloat-abi=softfp" LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--as-needed"
 
 
