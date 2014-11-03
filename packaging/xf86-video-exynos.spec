@@ -10,7 +10,6 @@ Source0:    %{name}-%{version}.tar.gz
 
 BuildRequires:  pkgconfig(xorg-macros)
 BuildRequires:  pkgconfig(xorg-server)
-BuildRequires:  pkgconfig(x11)
 BuildRequires:  pkgconfig(xproto)
 BuildRequires:  pkgconfig(fontsproto)
 BuildRequires:  pkgconfig(randrproto)
