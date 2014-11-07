@@ -43,6 +43,7 @@ static unsigned int drmfmt_list[] =
     /* packed */
     DRM_FORMAT_RGB565,
     DRM_FORMAT_XRGB8888,
+    DRM_FORMAT_ARGB8888,
     DRM_FORMAT_YUYV,
     DRM_FORMAT_UYVY,
 
