@@ -48,7 +48,7 @@
 #include <xace.h>
 #include <xacestr.h>
 
-#include "common.h"
+#include <exynos/exynos_drm.h>
 
 #include "sec.h"
 #include "sec_util.h"
@@ -669,7 +669,9 @@ _secWbOpenDrm (SECWb *wb)
 #endif
     property.prop_id = wb->prop_id;
     property.refresh_rate = wb->hz;
+#ifdef LAGACY_INTERFACE
     property.protect = wb->secure;
+#endif
 
     wb->prop_id = secDrmIppSetProperty (wb->pScrn, &property);
     XDBG_GOTO_IF_FAIL (wb->prop_id >= 0, fail_to_open);

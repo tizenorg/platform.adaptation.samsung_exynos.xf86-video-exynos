@@ -38,6 +38,11 @@ AC_ARG_ENABLE(dri3,
                              [Enable DRI3 backend (default: disabled)]),
 			     [DRI3=$enableval], [DRI3=no])
 
+AC_ARG_ENABLE(legacy-interface,
+	      AS_HELP_STRING([--enable-legacy-interface],
+                             [Enable using of legacy kernel interface (default: disabled)]),
+			     [LEGACY_INTERFACE=$enableval], [LEGACY_INTERFACE=no])
+
 AC_ARG_ENABLE(ftests,
 AS_HELP_STRING([--enable-ftests], [Enable functional tests (default: no)]),
                 [FT="$enableval"], [FT="no"])
@@ -93,6 +98,11 @@ if test "x$PCIACCESS" = xyes; then
     AC_DEFINE(PCIACCESS, 1, [Use libpciaccess])
     PKG_CHECK_MODULES([PCIACCESS], [pciaccess >= 0.8.0])
     XORG_CFLAGS="$XORG_CFLAGS $PCIACCESS_CFLAGS "
+fi
+
+AM_CONDITIONAL(LEGACY_INTERFACE, [test "x$LEGACY_INTERFACE" = xyes])
+if test "x$LEGACY" = xyes; then
+    AC_DEFINE(LEGACY_INTERFACE, 1, [Enable using of legacy kernel interface])
 fi
 
 # Checks for libraries.

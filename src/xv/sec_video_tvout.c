@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_prop.h"
 
 #include <sys/ioctl.h>
-#include "common.h"
+#include <exynos/exynos_drm.h>
 #include <drm_fourcc.h>
 
 #define TVBUF_NUM  3

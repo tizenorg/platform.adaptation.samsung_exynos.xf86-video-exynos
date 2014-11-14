@@ -141,8 +141,10 @@ void secUtilConvertBos (ScrnInfoPtr pScrn, int src_id,
                         Bool composite, int rotate);
 
 void secUtilFreeHandle        (ScrnInfoPtr scrn, unsigned int handle);
+#ifdef _F_MOBILE_FEATURE_
 Bool secUtilConvertPhyaddress (ScrnInfoPtr scrn, unsigned int phy_addr, int size, unsigned int *handle);
 Bool secUtilConvertHandle     (ScrnInfoPtr scrn, unsigned int handle, unsigned int *phy_addr, int *size);
+#endif
 
 typedef void (*DestroyDataFunc) (void *func_data, void *key_data);
 

@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <X11/Xatom.h>
 #include <X11/extensions/dpmsconst.h>
 #include <sec.h>
-#include "common.h"
+#include <exynos/exynos_drm.h>
 
 #include "sec_crtc.h"
 #include "sec_output.h"
