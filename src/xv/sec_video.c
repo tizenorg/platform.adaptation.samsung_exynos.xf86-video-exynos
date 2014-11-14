@@ -70,7 +70,7 @@
 
 #include "xv_types.h"
 
-#include "common.h"
+#include <exynos/exynos_drm.h>
 
 #define DONT_FILL_ALPHA     -1
 #define SEC_MAX_PORT        16
@@ -775,6 +775,7 @@ _secVideoGetInbufZeroCopy (SECPortPrivPtr pPort, unsigned int *names, unsigned i
 
             if (buf_type == XV_BUF_TYPE_LEGACY)
             {
+#ifdef LEGACY_INTERFACE
                 void *data = secUtilListGetData (pPort->gem_list, (void*)names[i]);
                 if (!data)
                 {
@@ -787,6 +788,10 @@ _secVideoGetInbufZeroCopy (SECPortPrivPtr pPort, unsigned int *names, unsigned i
                     inbuf->handles[i] = (unsigned int)data;
 
                 XDBG_DEBUG (MVDO, "%d, %p => %d \n", i, (void*)names[i], inbuf->handles[i]);
+#else
+                XDBG_ERROR (MVDO, "not support legacy type\n");
+                goto fail_dma;
+#endif
             }
             else
             {

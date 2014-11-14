@@ -1914,7 +1914,8 @@ secCrtcApply(xf86CrtcPtr pCrtc)
 
             pOutputPriv = pOutput->driver_private;
 #if 1
-        memcpy (&pSecMode->main_lcd_mode, pOutputPriv->mode_output->modes, sizeof(drmModeModeInfo));
+        if (pOutputPriv->mode_output->modes)
+            memcpy (&pSecMode->main_lcd_mode, pOutputPriv->mode_output->modes, sizeof(drmModeModeInfo));
 #endif
 
             /* TODO :: soolim :: check this out */

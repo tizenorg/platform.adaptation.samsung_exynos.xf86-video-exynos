@@ -739,7 +739,9 @@ secCvtSetProperpty (SECCvt *cvt, SECCvtProp *src, SECCvtProp *dst)
     property.type = IPP_EVENT_DRIVEN;
 #endif
     property.prop_id = cvt->prop_id;
+#ifdef LEGACY_INTERFACE
     property.protect = dst->secure;
+#endif
     property.range = dst->csc_range;
 
     XDBG_TRACE (MCVT, "cvt(%p) src('%c%c%c%c', '%c%c%c%c', %dx%d, %d,%d %dx%d, %d, %d&%d, %d, %d)\n",

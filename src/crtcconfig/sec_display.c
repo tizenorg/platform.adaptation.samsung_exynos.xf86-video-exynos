@@ -56,7 +56,7 @@
 #include "sec_util.h"
 #include "sec_xberc.h"
 #include <xf86RandR12.h>
-#include "common.h"
+#include <exynos/exynos_drm.h>
 #include "sec_dummy.h"
 
 static Bool SECCrtcConfigResize(ScrnInfoPtr pScrn, int width, int height);
@@ -1436,7 +1436,6 @@ secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
     drmVBlank vbl;
     int ret;
     SECPtr pSec = SECPTR (pScrn);
-    SECModePtr pSecMode = pSec->pSecMode;
 
     /* if lcd is off, return true with msc = 0 */
 #ifdef NO_CRTC_MODE
@@ -1463,9 +1462,12 @@ secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
 
     if (pipe > 0)
     {
+#ifdef LEGACY_INTERFACE
+        SECModePtr pSecMode = pSec->pSecMode;
         if (pSecMode->conn_mode == DISPLAY_CONN_MODE_VIRTUAL)
             vbl.request.type |= _DRM_VBLANK_EXYNOS_VIDI;
         else
+#endif
             vbl.request.type |= DRM_VBLANK_SECONDARY;
     }
 
@@ -1512,9 +1514,11 @@ secDisplayVBlank (ScrnInfoPtr pScrn, int pipe, CARD64 *target_msc, int flip,
 
     if (pipe > 0)
     {
+#ifdef LEGACY_INTERFACE
         if (pSecMode->conn_mode == DISPLAY_CONN_MODE_VIRTUAL)
             vbl.request.type |= _DRM_VBLANK_EXYNOS_VIDI;
         else
+#endif
             vbl.request.type |= DRM_VBLANK_SECONDARY;
     }
 

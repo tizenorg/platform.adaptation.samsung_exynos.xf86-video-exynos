@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_crtc.h"
 #include "sec_prop.h"
 #include "sec_util.h"
-#include "common.h"
+#include <exynos/exynos_drm.h>
 #include <sys/ioctl.h>
 
 #define STR_XRR_DISPLAY_MODE_PROPERTY "XRR_PROPERTY_DISPLAY_MODE"
@@ -98,7 +98,9 @@ typedef enum
 typedef enum
 {
     XRR_OUTPUT_LVDS_FUNC_NULL,
+#ifdef LEGACY_INTERFACE
 	XRR_OUTPUT_LVDS_FUNC_INIT_VIRTUAL,
+#endif
 	XRR_OUTPUT_LVDS_FUNC_HIBERNATION,
 	XRR_OUTPUT_LVDS_FUNC_ACCESSIBILITY,
 } XRROutputPropLvdsFunc;
@@ -277,6 +279,7 @@ secPropUnSetDisplayMode (xf86OutputPtr pOutput)
     pOutputPriv->disp_mode = XRR_OUTPUT_DISPLAY_MODE_NULL;
 }
 
+#ifdef LEGACY_INTERFACE
 static const char fake_edid_info[] = {
     /* fill the edid information */
 };
@@ -307,6 +310,7 @@ _secPropSetVirtual (xf86OutputPtr pOutput, int sc_conn)
 
     ioctl (fd, DRM_IOCTL_EXYNOS_VIDI_CONNECTION, &vidi);
 }
+#endif
 
 Bool
 secPropSetLvdsFunc (xf86OutputPtr pOutput, Atom property, RRPropertyValuePtr value)
@@ -342,14 +346,18 @@ secPropSetLvdsFunc (xf86OutputPtr pOutput, Atom property, RRPropertyValuePtr val
 
     XDBG_DEBUG (MDISP, "output_name=%s, lvds_func=%d\n", pOutput->name, lvds_func);
 
+#ifdef LEGACY_INTERFACE
     int sc_conn;
+#endif
     switch (lvds_func)
     {
+#ifdef LEGACY_INTERFACE
         case XRR_OUTPUT_LVDS_FUNC_INIT_VIRTUAL:
             sc_conn = *((int *)value->data+1);
             XDBG_INFO (MDISP, "[LVDS_FUNC]: set virtual output (%d)\n", sc_conn);
             _secPropSetVirtual (pOutput, sc_conn);
             break;
+#endif
         case XRR_OUTPUT_LVDS_FUNC_HIBERNATION:
             XDBG_INFO (MDISP, "[LVDS_FUNC]: set hibernationn\n");
             break;
