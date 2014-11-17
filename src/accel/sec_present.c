@@ -50,6 +50,14 @@
 #include "sec_display.h"
 #include "sec_crtc.h"
 
+typedef enum __dri3_copy_type
+{
+    dri3_copy_xserver = 0,
+    dri3_copy_swap_bo,
+    dri3_copy_swap_pix
+} e_dri3_copy_type;
+
+
 static int SECPresentGetUstMsc(RRCrtcPtr pRRcrtc, CARD64 *ust, CARD64 *msc);
 
 /*-------------------------- Private structures -----------------------------*/
@@ -243,6 +251,163 @@ SECPresentCheckFlip(RRCrtcPtr 	pRRcrtc,
 	return TRUE;
 }
 
+struct pixmap_visit {
+    PixmapPtr old;
+    PixmapPtr new;
+};
+
+int
+present_set_tree_pixmap_visit(WindowPtr window, void *data)
+{
+    struct pixmap_visit *visit = data;
+    ScreenPtr screen = window->drawable.pScreen;
+
+    if ((*screen->GetWindowPixmap)(window) != visit->old)
+        return WT_DONTWALKCHILDREN;
+    (*screen->SetWindowPixmap)(window, visit->new);
+    return WT_WALKCHILDREN;
+}
+
+static void
+present_set_tree_pixmap(WindowPtr window, PixmapPtr pixmap)
+{
+    struct pixmap_visit visit;
+    ScreenPtr screen = window->drawable.pScreen;
+
+    visit.old = (*screen->GetWindowPixmap)(window);
+    visit.new = pixmap;
+    if (visit.old == visit.new)
+        return;
+    TraverseTree(window, present_set_tree_pixmap_visit, &visit);
+}
+
+static
+Bool _useSwapingDRI3(SECPtr pSec)
+{
+    return pSec->dri3_copy_type != dri3_copy_xserver;
+}
+
+static Bool
+SECPresentCopyRegion(DrawablePtr pDraw, PixmapPtr pBackPix,
+        RegionPtr pUpdate, int16_t x_off, int16_t y_off)
+{
+    ScreenPtr pScreen = pDraw->pScreen;
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pDraw->pScreen);
+    SECPtr pSec = SECPTR(pScrn);
+
+    PixmapPtr pFrontPix = NULL;
+
+    if (pDraw->type == DRAWABLE_WINDOW)
+        pFrontPix = pScreen->GetWindowPixmap((WindowPtr) pDraw);
+    else
+        pFrontPix = (PixmapPtr) pDraw;
+
+    SECPixmapPriv *pFrontExaPixPriv = exaGetPixmapDriverPrivate(pFrontPix);
+    SECPixmapPriv *pBackExaPixPriv = exaGetPixmapDriverPrivate(pBackPix);
+
+    //DEBUG
+    {
+        PixmapPtr pScrPix = pScreen->GetScreenPixmap(pScreen);
+        SECPixmapPriv *pScrPixPriv = exaGetPixmapDriverPrivate(pScrPix);
+
+        PixmapPtr pRootPix = pScreen->GetWindowPixmap(pScreen->root);
+        SECPixmapPriv *pRootPixPriv = exaGetPixmapDriverPrivate(pRootPix);
+
+        XDBG_DEBUG(MDRI3,"\n"
+                        "\t\tfront: pix(sn:%ld p:%p ID:0x%x fb:%d hint:%d), bo(ptr:%p name:%d)\n"
+                        "\t\tback : pix(sn:%ld p:%p ID:0x%x fb:%d hint:%d), bo(ptr:%p name:%d)\n"
+                        "\t\tscrn : pix(sn:%ld p:%p ID:0x%x fb:%d hint:%d), bo(ptr:%p name:%d)\n"
+                        "\t\troot : pix(sn:%ld p:%p ID:0x%x fb:%d hint:%d), bo(ptr:%p name:%d)\n",
+                pFrontPix->drawable.serialNumber, pFrontPix, pFrontPix->drawable.id, pFrontExaPixPriv->isFrameBuffer, pFrontPix->usage_hint,
+                pFrontExaPixPriv->bo, (pFrontExaPixPriv->bo ? tbm_bo_export(pFrontExaPixPriv->bo) : -1),
+                pBackPix->drawable.serialNumber, pBackPix, pBackPix->drawable.id, pBackExaPixPriv->isFrameBuffer, pBackPix->usage_hint,
+                pBackExaPixPriv->bo, (pBackExaPixPriv->bo ? tbm_bo_export(pBackExaPixPriv->bo) : -1),
+                pScrPix->drawable.serialNumber, pScrPix, pScrPix->drawable.id, pScrPixPriv->isFrameBuffer, pScrPix->usage_hint,
+                pScrPixPriv->bo,(pScrPixPriv->bo ? tbm_bo_export(pScrPixPriv->bo) : -1),
+                pRootPix->drawable.serialNumber, pRootPix, pRootPix->drawable.id, pRootPixPriv->isFrameBuffer,
+                pRootPix->usage_hint, pRootPixPriv->bo, (pRootPixPriv->bo ? tbm_bo_export(pRootPixPriv->bo) : -1));
+    }
+
+    /*
+     * check to swap
+     */
+    if (!_useSwapingDRI3(pSec))
+    {
+        XDBG_DEBUG(MDRI3, "xserver copy\n");
+        return FALSE;
+    }
+
+    if (pFrontPix->drawable.width != pBackPix->drawable.width ||
+        pFrontPix->drawable.height != pBackPix->drawable.height ||
+        pFrontPix->drawable.bitsPerPixel != pBackPix->drawable.bitsPerPixel)
+    {
+        XDBG_DEBUG(MDRI3, "xserver copy (does not match the pixmaps)\n");
+        return FALSE;
+    }
+
+    if (pFrontExaPixPriv->isFrameBuffer)
+    {
+        XDBG_DEBUG(MDRI3, "xserver copy (the fornt pixmap is frame buffer)\n");
+        return FALSE;
+    }
+
+    if (pSec->dri3_copy_type == dri3_copy_swap_pix && pDraw->type == DRAWABLE_WINDOW)
+    {
+        /*
+         * TO-DO: save native pixmap for window
+         */
+        pBackPix->usage_hint = pFrontPix->usage_hint;
+        present_set_tree_pixmap(((WindowPtr) pDraw), pBackPix);
+        XDBG_DEBUG(MDRI3, "swap pixmap\n");
+    }
+    else
+    {
+        //save native bo to saved_bo, later it can be returned or deleted
+        if (pFrontExaPixPriv->saved_bo == NULL)
+        {
+            pFrontExaPixPriv->saved_bo = pFrontExaPixPriv->bo;
+            pFrontExaPixPriv->bo = NULL;
+        }
+
+        //set new bo to front pixmap
+        if (pFrontExaPixPriv->bo != pBackExaPixPriv->bo)
+        {
+            if (pFrontExaPixPriv->bo != NULL)
+            {
+                tbm_bo_unref(pFrontExaPixPriv->bo);
+            }
+            pFrontExaPixPriv->bo = tbm_bo_ref(pBackExaPixPriv->bo);
+        }
+        XDBG_DEBUG(MDRI3, "swap bo\n");
+    }
+
+    /*
+     * Report update region as damaged
+     */
+    if (pDraw->type == DRAWABLE_WINDOW)
+    {
+        RegionPtr damage;
+        if (pUpdate)
+        {
+            damage = pUpdate;
+            RegionIntersect(damage, damage, &((WindowPtr) pDraw)->clipList);
+        }
+        else
+        {
+            damage = &((WindowPtr) pDraw)->clipList;
+        }
+
+        BoxPtr pBox = RegionRects(damage);
+        int nBox = RegionNumRects(damage);
+
+        XDBG_DEBUG(MDRI3, "DamageRegion: num %d [%d,%d->%d,%d]\n", nBox,
+                pBox->x1, pBox->y1, pBox->x2, pBox->y2);
+        DamageDamageRegion(pDraw, damage);
+    }
+
+    return TRUE;
+}
+
 static Bool
 SECPresentFlip(RRCrtcPtr		pRRcrtc,
                    uint64_t		event_id,
@@ -250,38 +415,38 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
                    PixmapPtr	pPixmap,
                    Bool			sync_flip)
 {
-	xf86CrtcPtr pCrtc = pRRcrtc->devPrivate;
-	ScreenPtr pScreen = pRRcrtc->pScreen;
-	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
-	int pipe = secModeGetCrtcPipe(pCrtc);
-	PresentVblankEventPtr pEvent = NULL;
+    xf86CrtcPtr pCrtc = pRRcrtc->devPrivate;
+    ScreenPtr pScreen = pRRcrtc->pScreen;
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    int pipe = secModeGetCrtcPipe(pCrtc);
+    PresentVblankEventPtr pEvent = NULL;
 
-	Bool ret;
+    Bool ret;
 
-	/* TODO - process sync_flip flag
+    /* TODO - process sync_flip flag
      * if (sync_flip)
      *      -//-
      * else
      *      -//-
      * */
 
-	pEvent = calloc(sizeof(PresentVblankEventRec), 1);
-	if (!pEvent) {
-		XDBG_ERROR(MDRI3, "fail to flip\n");
-		return BadAlloc;
-	}
-	pEvent->event_id = event_id;
-	pEvent->pRRcrtc = pRRcrtc;
+    pEvent = calloc(sizeof(PresentVblankEventRec), 1);
+    if (!pEvent)
+    {
+        XDBG_ERROR(MDRI3, "fail to flip\n");
+        return BadAlloc;
+    }
+    pEvent->event_id = event_id;
+    pEvent->pRRcrtc = pRRcrtc;
 
-    SECPixmapPriv *pExaPixPriv = exaGetPixmapDriverPrivate (pPixmap);
+    SECPixmapPriv *pExaPixPriv = exaGetPixmapDriverPrivate(pPixmap);
 
-	/*FIXME - get client id by draw id*/
-	unsigned int client_idx = 0;
-	XID drawable_id = pExaPixPriv->owner;
+    /*FIXME - get client id by draw id*/
+    unsigned int client_idx = 0;
+    XID drawable_id = pExaPixPriv->owner;
 
-	ret = secModePageFlip (pScrn, NULL, pEvent, pipe, pExaPixPriv->bo, 
-						   NULL, client_idx, drawable_id,
-						   secPresentFlipEventHandler);
+    ret = secModePageFlip(pScrn, NULL, pEvent, pipe, pExaPixPriv->bo,
+                          NULL, client_idx, drawable_id, secPresentFlipEventHandler);
     if (!ret)
     {
         secPresentFlipAbort(pEvent);
@@ -295,9 +460,9 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
         SECPixmapPriv *pScreenPixPriv = exaGetPixmapDriverPrivate (pScreenPix);
 
         XDBG_DEBUG(MDRI3, "doPageFlip id:0x%x Client:%d pipe:%d\n"
-                "Present:pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
-                "Root:   pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
-                "Screen: pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n",
+                "\t\t\tPresent:pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
+                "\t\t\tRoot:   pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n"
+                "\t\t\tScreen: pix(sn:%ld p:%p ID:0x%x), bo(ptr:%p name:%d)\n",
                 (unsigned int )pExaPixPriv->owner, client_idx, pipe,
                 pPixmap->drawable.serialNumber, pPixmap, pPixmap->drawable.id,
                 pExaPixPriv->bo, tbm_bo_export(pExaPixPriv->bo),
@@ -307,8 +472,8 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
                 pScreenPixPriv->bo, (pScreenPixPriv->bo ? tbm_bo_export(pScreenPixPriv->bo) : -1));
 
     }
-	
-	return ret;
+
+    return ret;
 }
 
 /*
@@ -382,47 +547,77 @@ static void SECPresentUnflip(ScreenPtr pScreen, uint64_t event_id)
 /* The main structure which contains callback functions */
 static present_screen_info_rec secPresentScreenInfo = {
 
-		.version = PRESENT_SCREEN_INFO_VERSION,
+        .version        = PRESENT_SCREEN_INFO_VERSION,
 
-	    .get_crtc = SECPresentGetCrtc,
-	    .get_ust_msc = SECPresentGetUstMsc,
-	    .queue_vblank = SECPresentQueueVblank,
-	    .abort_vblank = SECPresentAbortVblank,
-	    .flush = SECPresentFlush,
-	    .capabilities = PresentCapabilityNone,
-	    .check_flip = SECPresentCheckFlip,
-	    .flip = SECPresentFlip,
-	    .unflip = SECPresentUnflip,
+        .get_crtc       = SECPresentGetCrtc,
+        .get_ust_msc    = SECPresentGetUstMsc,
+        .queue_vblank   = SECPresentQueueVblank,
+        .abort_vblank   = SECPresentAbortVblank,
+        .flush          = SECPresentFlush,
+        .capabilities   = PresentCapabilityNone,
+        .check_flip     = SECPresentCheckFlip,
+        .flip           = SECPresentFlip,
+        .unflip         = SECPresentUnflip,
+#ifdef PRESENT_SWAP
+        .copy_region    = SECPresentCopyRegion,
+#endif
 };
 
 static Bool
 _hasAsyncFlip(ScreenPtr pScreen)
 {
 #ifdef DRM_CAP_ASYNC_PAGE_FLIP
-	ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);;
-	SECPtr 		pExynos = SECPTR (pScrn);
-	int         ret = 0;
-	uint64_t    value = 0;
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    SECPtr pExynos = SECPTR(pScrn);
+    int ret = 0;
+    uint64_t value = 0;
 
-	ret = drmGetCap(pExynos->drm_fd, DRM_CAP_ASYNC_PAGE_FLIP, &value);
-	if (ret == 0)
-		return value == 1;
+    ret = drmGetCap(pExynos->drm_fd, DRM_CAP_ASYNC_PAGE_FLIP, &value);
+    if (ret == 0)
+        return value == 1;
 #endif
-	return FALSE;
+    return FALSE;
 }
 
 Bool
 secPresentScreenInit( ScreenPtr pScreen )
 {
+    ScrnInfoPtr pScrn = xf86ScreenToScrn(pScreen);
+    SECPtr pSec = SECPTR(pScrn);
 
-	if (_hasAsyncFlip(pScreen))
-		secPresentScreenInfo.capabilities |= PresentCapabilityAsync;
+    pSec->dri3_copy_type = dri3_copy_swap_bo; //Default value
 
-	int ret = present_screen_init( pScreen, &secPresentScreenInfo );
-	if(!ret)
-		return FALSE;
+    const char * env_str = getenv("DRI3_SWAP");
+    if (env_str)
+        if (memcmp(env_str, "0", 1) == 0)
+            pSec->dri3_copy_type = dri3_copy_xserver;
 
-	return TRUE;
+    env_str = getenv("DRI3_COPY_TYPE");
+    if (env_str && pSec->dri3_copy_type != dri3_copy_xserver) {
+        if (memcmp(env_str, "swap_bo", strlen(env_str)) == 0)
+            pSec->dri3_copy_type = dri3_copy_swap_bo;
+        else if (memcmp(env_str, "swap_pix", strlen(env_str)) == 0)
+            pSec->dri3_copy_type = dri3_copy_swap_pix;
+    }
+
+    xf86DrvMsg(pScrn->scrnIndex, X_INFO, "DRI3 copy type: %s\n",
+            pSec->dri3_copy_type == dri3_copy_xserver  ? "xserver" :
+            pSec->dri3_copy_type == dri3_copy_swap_bo  ? "swap_bo" :
+            pSec->dri3_copy_type == dri3_copy_swap_pix ? "swap_pix" : "unknown");
+
+    if (_hasAsyncFlip(pScreen)) {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO, "DRI3 support async flip\n");
+        secPresentScreenInfo.capabilities |= PresentCapabilityAsync;
+    } else {
+        xf86DrvMsg(pScrn->scrnIndex, X_INFO,
+                "DRI3 doesn't support async flip\n");
+    }
+
+    int ret = present_screen_init(pScreen, &secPresentScreenInfo);
+    if (!ret)
+        return FALSE;
+
+    return TRUE;
 }
 
 
