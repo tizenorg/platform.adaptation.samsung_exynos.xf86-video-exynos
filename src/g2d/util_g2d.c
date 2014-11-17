@@ -1,3 +1,5 @@
+#include <xorg-server.h>
+#include <stdio.h>
 #include <stdio.h>
 
 #include <xorg-server.h>
