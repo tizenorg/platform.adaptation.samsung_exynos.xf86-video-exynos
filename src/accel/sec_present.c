@@ -50,6 +50,7 @@
 #include "sec_display.h"
 #include "sec_crtc.h"
 
+static int SECPresentGetUstMsc(RRCrtcPtr pRRcrtc, CARD64 *ust, CARD64 *msc);
 
 /*-------------------------- Private structures -----------------------------*/
 typedef struct _presentVblankEvent {
@@ -75,7 +76,7 @@ secPresentVblankHandler(unsigned int frame, unsigned int tv_sec,
 
 	PresentVblankEventRec *pEvent = event_data;
 
-	XDBG_DEBUG(MDRI3, "event_id %lld\n", pEvent->event_id);
+    XDBG_DEBUG(MDRI3, "event_id %lld ust:%lld msc:%lld\n", pEvent->event_id, usec, frame);
 	present_event_notify(pEvent->event_id, usec, frame);
     free(pEvent);
 }
@@ -103,7 +104,12 @@ secPresentFlipEventHandler(unsigned int frame, unsigned int tv_sec,
 	PresentVblankEventRec *pEvent = event_data;
 	uint64_t ust = (uint64_t) tv_sec * 1000000 + tv_usec;
 	uint64_t msc = (uint64_t)frame;
-	XDBG_DEBUG(MDRI3, "event_id %lld\n", pEvent->event_id);
+    if ( msc == 0 )
+    {
+        uint64_t tmp_ust;
+        SECPresentGetUstMsc(pEvent->pRRcrtc, &tmp_ust, &msc);
+    }
+	XDBG_DEBUG(MDRI3, "event_id %lld ust:%lld msc:%lld(%d)\n", pEvent->event_id, ust, msc, frame);
 	present_event_notify(pEvent->event_id, ust, msc);
 	free(pEvent);
 }
@@ -252,7 +258,7 @@ SECPresentFlip(RRCrtcPtr		pRRcrtc,
 
 	Bool ret;
 
-	/* TODO - precoess sync_flip flag
+	/* TODO - process sync_flip flag
      * if (sync_flip)
      *      -//-
      * else
