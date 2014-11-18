@@ -39,13 +39,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <errno.h>
 #include <X11/XWDFile.h>
 
 #include "sec.h"
 #include "sec_util.h"
 #include "sec_output.h"
 #include "sec_video_fourcc.h"
-#include "common.h"
+#include <exynos/exynos_drm.h>
 #include <list.h>
 
 #include "fimg2d.h"
@@ -648,12 +649,10 @@ secUtilFlushDump (void *d)
     if (!is_dir)
     {
         DIR *dp;
-        if(mkdir (dir, 0755))
-            return;
 
         if (!(dp = opendir (dir)))
         {
-            ErrorF ("failed: open'%s'\n", dir);
+            ErrorF ("failed: open'%s' (%s)\n", dir, strerror(errno));
             return;
         }
         else
@@ -825,6 +824,7 @@ int secUtilRotateAdd (int rot_a, int rot_b)
 void
 secUtilCacheFlush (ScrnInfoPtr scrn)
 {
+#ifdef LEGACY_INTERFACE
     struct drm_exynos_gem_cache_op cache_op;
     SECPtr pSec;
     int ret;
@@ -850,6 +850,7 @@ secUtilCacheFlush (ScrnInfoPtr scrn)
                     "cache flush failed. (%s)\n", strerror(errno));
         success = FALSE;
     }
+#endif
 }
 
 const PropertyPtr
@@ -1380,6 +1381,7 @@ secUtilFreeHandle (ScrnInfoPtr scrn, unsigned int handle)
     }
 }
 
+#ifdef LEGACY_INTERFACE
 Bool
 secUtilConvertPhyaddress (ScrnInfoPtr scrn, unsigned int phy_addr, int size,
                           unsigned int *handle)
@@ -1441,6 +1443,7 @@ secUtilConvertHandle (ScrnInfoPtr scrn, unsigned int handle,
 
     return TRUE;
 }
+#endif
 
 typedef struct _ListData
 {
@@ -1674,8 +1677,13 @@ static SECFormatTable format_table[] =
 {
     { FOURCC_RGB565, DRM_FORMAT_RGB565,    TYPE_RGB    },
     { FOURCC_SR16,   DRM_FORMAT_RGB565,    TYPE_RGB    },
+#ifdef LEGACY_INTERFACE
     { FOURCC_RGB32,  DRM_FORMAT_XRGB8888,  TYPE_RGB    },
     { FOURCC_SR32,   DRM_FORMAT_XRGB8888,  TYPE_RGB    },
+#else
+    { FOURCC_RGB32,  DRM_FORMAT_ARGB8888,  TYPE_RGB    },
+    { FOURCC_SR32,   DRM_FORMAT_ARGB8888,  TYPE_RGB    },
+#endif
     { FOURCC_YV12,   DRM_FORMAT_YVU420,    TYPE_YUV420 },
     { FOURCC_I420,   DRM_FORMAT_YUV420,    TYPE_YUV420 },
     { FOURCC_S420,   DRM_FORMAT_YUV420,    TYPE_YUV420 },
@@ -2023,8 +2031,10 @@ _secUtilAllocVideoBuffer (ScrnInfoPtr scrn, int id, int width, int height,
         vbuf->handles[i] = bo_handle.u32;
         XDBG_GOTO_IF_FAIL (vbuf->handles[i] > 0, alloc_fail);
 
+#ifdef LEGACY_INTERFACE
         if (scanout)
             secUtilConvertHandle (scrn, vbuf->handles[i], &vbuf->phy_addrs[i], NULL);
+#endif
 
         XDBG_DEBUG (MVBUF, "handle(%d) => phy_addrs(%d) \n", vbuf->handles[i], vbuf->phy_addrs[i]);
     }

@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define __SEC_CONVERTER_H__
 
 #include <fbdevhw.h>
-#include "common.h"
+#include <exynos/exynos_drm.h>
 
 typedef struct _SECCvt SECCvt;
 

@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <xorg-server.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 
