@@ -11,13 +11,11 @@ Source0:    %{name}-%{version}.tar.gz
 BuildRequires:  pkgconfig(xorg-macros)
 BuildRequires:  pkgconfig(xorg-server)
 BuildRequires:  pkgconfig(xproto)
-BuildRequires:  pkgconfig(dri3proto)
 BuildRequires:  pkgconfig(fontsproto)
 BuildRequires:  pkgconfig(randrproto)
 BuildRequires:  pkgconfig(renderproto)
 BuildRequires:  pkgconfig(videoproto)
 BuildRequires:  pkgconfig(resourceproto)
-BuildRequires:  pkgconfig(presentproto)
 BuildRequires:  pkgconfig(libudev)
 BuildRequires:  pkgconfig(libtbm)
 BuildRequires:  pkgconfig(xdbg)
@@ -33,7 +31,7 @@ This package provides the driver for the Samsung display device exynos
 %build
 rm -rf %{buildroot}
 
-%autogen --disable-static --enable-dri3 \
+%autogen --disable-static --enable-legacy-interface \
 	CFLAGS="${CFLAGS} -Wall -mfpu=neon -DNO_CRTC_MODE -mfloat-abi=softfp" LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--as-needed"
 
 
