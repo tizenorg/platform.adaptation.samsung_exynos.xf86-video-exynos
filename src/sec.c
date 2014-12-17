@@ -115,6 +115,7 @@ typedef enum
     OPTION_PRESENT,
     OPTION_DRI3,
     OPTION_PARTIAL_UPDATE,
+    OPTION_CURSOR_ENABLE,
 } SECOpts;
 
 static const OptionInfoRec SECOptions[] =
@@ -134,6 +135,7 @@ static const OptionInfoRec SECOptions[] =
     { OPTION_PRESENT,  "present",    OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_DRI3,	   "dri3",   	 OPTV_BOOLEAN, {0}, FALSE },
     { OPTION_PARTIAL_UPDATE,  "partial_update",    OPTV_BOOLEAN, {0}, FALSE },
+    { OPTION_CURSOR_ENABLE,  "cursor_enable",    OPTV_BOOLEAN, {0}, FALSE },
     { -1,              NULL,         OPTV_NONE,    {0}, FALSE }
 };
 
@@ -592,6 +594,16 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
         {
             pSec->use_partial_update = TRUE;
             xf86DrvMsg (pScrn->scrnIndex, X_CONFIG, "Use partial update.\n");
+        }
+    }
+
+    /* cursor_enable */
+    if (xf86ReturnOptValBool (pSec->Options, OPTION_CURSOR_ENABLE, FALSE))
+    {
+        if (xf86ReturnOptValBool (pSec->Options, OPTION_CURSOR_ENABLE, FALSE))
+        {
+            pSec->enableCursor = TRUE;
+            xf86DrvMsg (pScrn->scrnIndex, X_CONFIG, "Enable hw cursor.\n");
         }
     }
 }
