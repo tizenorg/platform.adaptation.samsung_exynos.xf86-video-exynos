@@ -62,6 +62,7 @@
 #include "sec_wb.h"
 #include "sec_video_virtual.h"
 #include "sec_video_display.h"
+#include "sec_video_clone.h"
 #include "sec_video_tvout.h"
 #include "sec_video_fourcc.h"
 #include "sec_converter.h"
@@ -1453,7 +1454,7 @@ _secVideoStreamOff (SECPortPrivPtr pPort)
 
     pPort->need_start_wb = FALSE;
     pPort->skip_tvout = FALSE;
-    pPort->usr_output = OUTPUT_LCD|OUTPUT_EXT;
+    pPort->usr_output = OUTPUT_LCD|OUTPUT_EXT|OUTPUT_FULL;
     pPort->outbuf_cvting = -1;
     pPort->drawing = 0;
     pPort->tv_prev_time = 0;
@@ -1485,7 +1486,7 @@ _secVideoCalculateSize (SECPortPrivPtr pPort)
     src_prop.height = pPort->d.height;
     src_prop.crop = pPort->d.src;
 
-     dst_prop.id = FOURCC_RGB32;
+    dst_prop.id = FOURCC_RGB32;
     if (pPort->drawing == ON_PIXMAP || pPort->drawing == ON_WINDOW)
     {
         dst_prop.width = pPort->d.pDraw->width;
@@ -2451,12 +2452,7 @@ SECVideoSetPortAttribute (ScrnInfoPtr pScrn,
     }
     else if (attribute == _portAtom (PAA_OUTPUT))
     {
-        if (value == OUTPUT_MODE_TVOUT)
-            pPort->usr_output = OUTPUT_LCD|OUTPUT_EXT|OUTPUT_FULL;
-        else if (value == OUTPUT_MODE_EXT_ONLY)
-            pPort->usr_output = OUTPUT_EXT|OUTPUT_FULL;
-        else
-            pPort->usr_output = OUTPUT_LCD|OUTPUT_EXT;
+        pPort->usr_output = OUTPUT_LCD|OUTPUT_EXT|OUTPUT_FULL;
 
         XDBG_DEBUG (MVDO, "output (%d) \n", (int) value);
 
@@ -2973,7 +2969,7 @@ secVideoSetupImageVideo (ScreenPtr pScreen)
     {
         pAdaptor->pPortPrivates[i].ptr = &pPort[i];
         pPort[i].index = i;
-        pPort[i].usr_output = OUTPUT_LCD|OUTPUT_EXT;
+        pPort[i].usr_output = OUTPUT_LCD|OUTPUT_EXT|OUTPUT_FULL;
         pPort[i].outbuf_cvting = -1;
     }
 
@@ -3058,6 +3054,16 @@ Bool secVideoInit (ScreenPtr pScreen)
     pVideo->pAdaptor[2] = secVideoSetupDisplayVideo (pScreen);
     if (!pVideo->pAdaptor[2])
     {
+        free (pVideo->pAdaptor[1]);
+        free (pVideo->pAdaptor[0]);
+        free (pVideo);
+        return FALSE;
+    }
+
+    pVideo->pAdaptor[3] = secVideoSetupCloneVideo (pScreen);
+    if (!pVideo->pAdaptor[3])
+    {
+        free (pVideo->pAdaptor[2]);
         free (pVideo->pAdaptor[1]);
         free (pVideo->pAdaptor[0]);
         free (pVideo);

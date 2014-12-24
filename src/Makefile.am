@@ -39,6 +39,7 @@ exynos_drv_la_SOURCES += \
 	xv/sec_video_tvout.c \
 	xv/sec_video_virtual.c \
 	xv/sec_video_display.c \
+	xv/sec_video_clone.c \
 	xv/sec_video.c
 AM_CFLAGS += -I@top_srcdir@/src/xv
 
