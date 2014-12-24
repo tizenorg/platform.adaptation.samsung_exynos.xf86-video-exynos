@@ -2,7 +2,7 @@
 
 Name:       xf86-video-exynos
 Summary:    X.Org X server driver for exynos
-Version:    1.0.0
+Version:    1.0.1
 Release:    1
 Group:      System/X Hardware Support
 License:    Samsung
@@ -37,9 +37,8 @@ This package provides the driver for the Samsung display device exynos
 %build
 rm -rf %{buildroot}
 
-%autogen --disable-static \
-	CFLAGS="${CFLAGS} -Wall -Werror -mfpu=neon -DNO_CRTC_MODE -mfloat-abi=softfp" LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--as-needed"
-
+%autogen --disable-static --enable-dri3 \
+	CFLAGS="${CFLAGS} -Wall -mfpu=neon -DNO_CRTC_MODE -DPRESENT_SWAP -mfloat-abi=softfp" LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--as-needed"
 
 make %{?jobs:-j%jobs}
 

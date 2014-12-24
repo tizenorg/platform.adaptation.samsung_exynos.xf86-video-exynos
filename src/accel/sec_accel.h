@@ -79,6 +79,8 @@ typedef struct
     /* for DRI3 */
     int stride;
 
+    /* for Present */
+    tbm_bo saved_bo;
 } SECPixmapPriv;
 
 /* exa driver private infomation */
