@@ -141,10 +141,11 @@ typedef struct
     InputHandlerProc uevent_handler;
 #endif
 
-    /* DRI2 */
+    /* DRI2 and DRI3/Present*/
     Atom atom_use_dri2;
     Bool useAsyncSwap;
     DrawablePtr flipDrawable;
+    int dri3_copy_type;
 
     /* pending flip handler cause of lcd off */
     Bool pending_flip_handler;

@@ -154,7 +154,7 @@ static void *
 SECExaCreatePixmap (ScreenPtr pScreen, int size, int align)
 {
     SECPixmapPriv *privPixmap = calloc (1, sizeof (SECPixmapPriv));
-
+    privPixmap->saved_bo = 0;
     return privPixmap;
 }
 
@@ -223,6 +223,9 @@ SECExaDestroyPixmap (ScreenPtr pScreen, void *driverPriv)
         privPixmap->bo = NULL;
         break;
     }
+
+    if(privPixmap->saved_bo)
+        tbm_bo_unref (privPixmap->saved_bo);
 
     /* free pixmap private */
     free (privPixmap);
