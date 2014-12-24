@@ -1913,10 +1913,6 @@ secCrtcApply(xf86CrtcPtr pCrtc)
                 continue;
 
             pOutputPriv = pOutput->driver_private;
-#if 1
-        if (pOutputPriv->mode_output->modes)
-            memcpy (&pSecMode->main_lcd_mode, pOutputPriv->mode_output->modes, sizeof(drmModeModeInfo));
-#endif
 
             /* TODO :: soolim :: check this out */
             secOutputDpmsSet(pOutput, DPMSModeOn);
