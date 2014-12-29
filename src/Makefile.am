@@ -57,12 +57,6 @@ AM_CFLAGS += -I@top_srcdir@/src/debug
 #	memory/sec_memory_flush.c
 #AM_CFLAGS += -I@top_srcdir@/src/memory
 
-# neon
-exynos_drv_la_SOURCES += \
-	neon/memcpy_neon.s \
-	neon/copy_area.c
-AM_CFLAGS += -I@top_srcdir@/src/neon
-
 # ipp
 exynos_drv_la_SOURCES += \
 	ipp/sec_drm_ipp.c \
