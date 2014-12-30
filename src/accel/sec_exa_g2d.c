@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_layer.h"
 #include "exa.h"
 #include "fbpict.h"
-#include "neonmem.h"
 #include "g2d/fimg2d.h"
 
 #define DO(x)   ((x.bDo==DO_DRAW_NONE)?"SKIP": \

@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "sec_layer.h"
 #include "exa.h"
 #include "fbpict.h"
-#include "neonmem.h"
 
 typedef struct
 {
