@@ -26,7 +26,7 @@ BuildRequires:  pkgconfig(libdrm)
 %if !%{with x}
 ExclusiveArch:
 %else
-ExclusiveArch: %arm
+ExclusiveArch: %arm aarch64
 %endif
 
 %description
