@@ -953,7 +953,7 @@ secCvtRemoveCallback (SECCvt *cvt, CvtFunc func, void *data)
 void
 secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
 {
-    CARD32 stamp = (CARD32)data;
+    CARD32 stamp = (CARD32)(uintptr_t)data;
     SECCvt *cvt;
     SECCvtBuf *src_cbuf, *dst_cbuf;
     SECVideoBuf *src_vbuf, *dst_vbuf;
@@ -993,7 +993,7 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
              * for every event. If a event has been skipped, to call _secCvtDequeued
              * forcely, we call secCvtHandleIppEvent recursivly.
              */
-            secCvtHandleIppEvent (0, indice, (void*)cvt->stamp, TRUE);
+            secCvtHandleIppEvent (0, indice, (void*)(uintptr_t)cvt->stamp, TRUE);
         }
         else
             break;
@@ -1012,7 +1012,7 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
         CARD32 cur, sub;
         cur = GetTimeInMillis ();
         sub = cur - src_cbuf->begin;
-        ErrorF ("cvt(%p)   ipp interval  : %6ld ms\n", cvt, sub);
+        ErrorF ("cvt(%p)   ipp interval  : %6u ms\n", cvt, (unsigned int)sub);
     }
 
     src_vbuf = src_cbuf->vbuf;

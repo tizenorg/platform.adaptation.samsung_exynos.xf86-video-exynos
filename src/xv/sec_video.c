@@ -385,7 +385,7 @@ static void
 _DestroyData (void *port, void *data)
 {
     SECPortPrivPtr pPort = (SECPortPrivPtr)port;
-    unsigned int handle = (unsigned int)data;
+    unsigned int handle = (unsigned int)(intptr_t)data;
 
     secUtilFreeHandle (pPort->pScrn, handle);
 }
@@ -1248,8 +1248,8 @@ _secVideoSendReturnBufferMessage (SECPortPrivPtr pPort, SECVideoBuf *vbuf, unsig
             CARD32 cur, sub;
             cur = GetTimeInMillis ();
             sub = cur - vbuf->put_time;
-            ErrorF ("vbuf(%d,%d,%d)         retbuf  : %6ld ms\n",
-                    vbuf->keys[0], vbuf->keys[1], vbuf->keys[2], sub);
+            ErrorF ("vbuf(%d,%d,%d)         retbuf  : %6u ms\n",
+                    vbuf->keys[0], vbuf->keys[1], vbuf->keys[2], (unsigned int)sub);
         }
         else if (keys)
             ErrorF ("vbuf(%d,%d,%d)         retbuf  : 0 ms\n",
@@ -2597,7 +2597,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
             _secVideoGetKeys (pPort, keys, NULL);
             snprintf (temp, sizeof(temp), "%d,%d,%d", keys[0], keys[1], keys[2]);
         }
-        ErrorF ("pPort(%p) put interval(%s) : %6ld ms\n", pPort, temp, sub);
+        ErrorF ("pPort(%p) put interval(%s) : %6u ms\n", pPort, temp, (unsigned int)sub);
     }
 
     if (IS_ZEROCOPY (pPort->d.id))

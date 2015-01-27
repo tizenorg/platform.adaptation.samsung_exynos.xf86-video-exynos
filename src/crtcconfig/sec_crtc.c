@@ -2367,7 +2367,7 @@ secCrtcExecAccessibility (xf86CrtcPtr pCrtc, tbm_bo src_bo, tbm_bo dst_bo)
         XDBG_NEVER_GET_HERE (MDISP);
 
     if (pSec->xvperf_mode & XBERC_XVPERF_MODE_ACCESS)
-        ErrorF ("Access exec: %3ld ms \n", GetTimeInMillis()-elapsed);
+        ErrorF ("Access exec: %3u ms \n", (unsigned int)(GetTimeInMillis()-elapsed));
 
     tbm_bo_unmap(src_bo);
     tbm_bo_unmap(dst_bo);
