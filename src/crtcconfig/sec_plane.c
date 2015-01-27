@@ -142,7 +142,7 @@ static Bool _secPlaneHideInternal (SECPlaneTable *table);
 static void
 _secPlaneFreeVbuf (SECVideoBuf *vbuf, void *data)
 {
-    int plane_id = (int)data;
+    int plane_id = (intptr_t)data;
     SECPlaneTable *table;
     SECPlaneFb *fb;
 
@@ -246,7 +246,7 @@ _secPlaneTableFreeBuffer (SECPlaneTable *table, SECPlaneFb *fb)
     {
         if (!fb->buffer_gone && fb->buffer.vbuf)
             secUtilRemoveFreeVideoBufferFunc (fb->buffer.vbuf, _secPlaneFreeVbuf,
-                                              (void*)table->plane_id);
+                                              (void*)(intptr_t)table->plane_id);
     }
 
     xorg_list_del (&fb->link);
@@ -1198,7 +1198,7 @@ secPlaneAddBuffer (int plane_id, SECVideoBuf *vbuf)
 
     fb->buffer.vbuf = vbuf;
 
-    secUtilAddFreeVideoBufferFunc (vbuf, _secPlaneFreeVbuf, (void*)plane_id);
+    secUtilAddFreeVideoBufferFunc (vbuf, _secPlaneFreeVbuf, (void*)(intptr_t)plane_id);
 
     XDBG_TRACE (MPLN, "plane(%d) vbuf(%ld,%d,%dx%d)\n", plane_id,
                 vbuf->stamp, vbuf->fb_id, vbuf->width, vbuf->height);

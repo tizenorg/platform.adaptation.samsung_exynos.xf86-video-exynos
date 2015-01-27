@@ -366,6 +366,8 @@ static ExaOpInfo* _swPrepareAccess (PixmapPtr pPix, int index)
         op->buf[0].pos.y2 = pPix->drawable.height;
     }
 
+    XDBG_RETURN_VAL_IF_FAIL (op->buf[0].pixmap->devPrivate.ptr != NULL, NULL);
+
     privPixmap->exaOpInfo = op;
 
     XDBG_TRACE (MEXAS, "pix:%p index:%d hint:%d ptr:%p ref:%d\n",
@@ -725,8 +727,8 @@ SECExaSwPrepareSolid (PixmapPtr pPixmap, int alu, Pixel planemask, Pixel fg)
     return TRUE;
 
 bail:
-    XDBG_TRACE (MEXAS, "FAIL: pix:%p hint:%d, num_pix:%d\n",
-                pPixmap, pPixmap->usage_hint, gOpSolid.pOpDst->num);
+    XDBG_ERROR (MEXAS, "FAIL: pix:%p hint:%d, num_pix:%d\n",
+                pPixmap, pPixmap->usage_hint, (gOpSolid.pOpDst)?gOpSolid.pOpDst->num:-1);
     gOpSolid.bDo = FALSE;
     gOpSolid.pGC = NULL;
 
