@@ -2359,10 +2359,10 @@ secUtilDumpVideoBuffer (char *reply, int *len)
 
     xorg_list_for_each_entry_safe (cur, next, &vbuf_lists, valid_link)
     {
-        XDBG_REPLY ("%d\t(%dx%d,%d)\t%c%c%c%c\t%d\t%d\t%d\t%ld\t%s\n",
+        XDBG_REPLY ("%d\t(%dx%d,%d)\t%c%c%c%c\t%d\t%d\t%d\t%u\t%s\n",
                     cur->fb_id, cur->width, cur->height, cur->size,
                     FOURCC_STR (cur->id),
-                    cur->flags, cur->ref_cnt, cur->secure, cur->stamp, cur->func);
+                    cur->flags, cur->ref_cnt, cur->secure, (unsigned int)cur->stamp, cur->func);
     }
 
     return reply;
