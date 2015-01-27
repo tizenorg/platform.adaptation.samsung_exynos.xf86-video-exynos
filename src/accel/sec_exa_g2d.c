@@ -421,7 +421,7 @@ _g2dGetImageFromPixmap(PixmapPtr pPix, unsigned int gem)
 
     if(gem == 0)
     {
-        gem = (unsigned int)pPix->devPrivate.ptr;
+        gem = (uintptr_t)pPix->devPrivate.ptr;
     }
 
     XDBG_RETURN_VAL_IF_FAIL((pPix != NULL && gem != 0), NULL);
@@ -520,7 +520,7 @@ static ExaOpInfo* _g2dPrepareAccess (PixmapPtr pPix, int index, unsigned int dev
             op->buf[0].access_device = device;
             bo_handle = tbm_bo_map (op->buf[0].bo, device, op->opt);
             op->buf[0].access_data = bo_handle.u32;
-            op->buf[0].pixmap->devPrivate.ptr = (pointer)op->buf[0].access_data;
+            op->buf[0].pixmap->devPrivate.ptr = (void*)(uintptr_t)op->buf[0].access_data;
             if(device == TBM_DEVICE_2D)
             {
                 op->buf[0].imgG2d = _g2dGetImageFromPixmap(op->buf[0].pixmap,
@@ -542,7 +542,7 @@ static ExaOpInfo* _g2dPrepareAccess (PixmapPtr pPix, int index, unsigned int dev
                 op->buf[i].access_device = device;
                 bo_handle = tbm_bo_map (op->buf[i].bo, device, op->opt);
                 op->buf[i].access_data = bo_handle.u32;
-                op->buf[i].pixmap->devPrivate.ptr = (pointer)op->buf[i].access_data;
+                op->buf[i].pixmap->devPrivate.ptr = (void*)(uintptr_t)op->buf[i].access_data;
                 if(device == TBM_DEVICE_2D)
                 {
                     op->buf[i].imgG2d = _g2dGetImageFromPixmap(op->buf[i].pixmap,
@@ -578,10 +578,10 @@ static ExaOpInfo* _g2dPrepareAccess (PixmapPtr pPix, int index, unsigned int dev
         }
         else
         {
-            op->buf[0].access_data = (unsigned int)privPixmap->pPixData;
+            op->buf[0].access_data = (uintptr_t)privPixmap->pPixData;
             op->buf[0].imgG2d = NULL;
         }
-        op->buf[0].pixmap->devPrivate.ptr = (pointer)op->buf[0].access_data;
+        op->buf[0].pixmap->devPrivate.ptr = (void*)(uintptr_t)op->buf[0].access_data;
     }
 
     privPixmap->exaOpInfo = op;
@@ -627,7 +627,7 @@ static void _g2dFinishAccess (PixmapPtr pPix, int index)
                 op->buf[i].imgG2d = NULL;
             }
 
-            op->buf[i].access_data = (unsigned int)NULL;
+            op->buf[i].access_data = (uintptr_t)NULL;
         }
 
         privPixmap->exaOpInfo = NULL;

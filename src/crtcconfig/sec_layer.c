@@ -330,7 +330,7 @@ _secLayerWatchVblank (SECLayer *layer)
     XDBG_TRACE (MLYR, "layer(%p) wait vblank : cur(%lld) target(%lld). \n",
                 layer, msc, target_msc);
 
-    if (!secDisplayVBlank (layer->pScrn, pipe, &target_msc, flip, VBLANK_INFO_PLANE, (void*)pipe))
+    if (!secDisplayVBlank (layer->pScrn, pipe, &target_msc, flip, VBLANK_INFO_PLANE, (void*)(intptr_t)pipe))
         XDBG_WARNING (MLYR, "fail to Vblank.\n");
 }
 
@@ -632,7 +632,7 @@ secLayerShow (SECLayer *layer)
 
     XDBG_TRACE (MLYR, "layer(%p) shown. \n", layer);
 
-    _secLayerNotify (layer, LAYER_SHOWN, (void*)layer->fb_id);
+    _secLayerNotify (layer, LAYER_SHOWN, (void*)(intptr_t)layer->fb_id);
 }
 
 void
@@ -692,7 +692,7 @@ secLayerHide (SECLayer *layer)
 
     XDBG_TRACE (MLYR, "layer(%p) hidden. \n", layer);
 
-    _secLayerNotify (layer, LAYER_HIDDEN, (void*)layer->fb_id);
+    _secLayerNotify (layer, LAYER_HIDDEN, (void*)(intptr_t)layer->fb_id);
 }
 
 void
@@ -1098,7 +1098,7 @@ secLayerVBlankEventHandler (unsigned int frame, unsigned int tv_sec,
                             unsigned int tv_usec, void *event_data)
 {
     SECLayer *layer = NULL, *layer_next = NULL;
-    int pipe = (int)event_data;
+    int pipe = (intptr_t)event_data;
 
     XDBG_RETURN_IF_FAIL (pipe < LAYER_OUTPUT_MAX);
 
