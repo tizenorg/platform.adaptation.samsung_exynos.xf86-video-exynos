@@ -87,7 +87,7 @@ typedef struct _SECPlaneAccess
 /* This is structure to manage a added buffer. */
 typedef struct _SECPlaneFb
 {
-    unsigned int id;
+    uint32_t id;
 
     int type;
     union
@@ -108,7 +108,7 @@ typedef struct _SECPlaneFb
 typedef struct _SECPlaneTable
 {
     SECPlanePrivPtr pPlanePriv;
-    int plane_id;
+    uint32_t plane_id;
 
     /* buffers which this plane has */
     struct xorg_list  fbs;
@@ -116,7 +116,7 @@ typedef struct _SECPlaneTable
 
     /* visibilitiy information */
     Bool visible;
-    int  crtc_id;
+    uint32_t  crtc_id;
     int  zpos;
     xRectangle src;
     xRectangle dst;
@@ -134,15 +134,15 @@ typedef struct _SECPlaneTable
 static SECPlaneTable *plane_table;
 static int plane_table_size;
 
-static SECPlaneTable* _secPlaneTableFind (int plane_id);
-static SECPlaneFb* _secPlaneTableFindBuffer (SECPlaneTable *table, int fb_id,
+static SECPlaneTable* _secPlaneTableFind (uint32_t plane_id);
+static SECPlaneFb* _secPlaneTableFindBuffer (SECPlaneTable *table, uint32_t fb_id,
                                              tbm_bo bo, SECVideoBuf *vbuf);
 static Bool _secPlaneHideInternal (SECPlaneTable *table);
 
 static void
-_secPlaneFreeVbuf (SECVideoBuf *vbuf, void *data)
+_secPlaneFreeVbuf (SECVideoBuf *vbuf, uniType data)
 {
-    int plane_id = (int)data;
+    uint32_t plane_id = data.u32;
     SECPlaneTable *table;
     SECPlaneFb *fb;
 
@@ -171,7 +171,7 @@ _secPlaneTableFindPos (int crtc_id, int zpos)
 }
 
 static SECPlaneTable*
-_secPlaneTableFind (int plane_id)
+_secPlaneTableFind (uint32_t plane_id)
 {
     int i;
 
@@ -181,7 +181,7 @@ _secPlaneTableFind (int plane_id)
         if (plane_table[i].plane_id == plane_id)
             return &plane_table[i];
 
-    XDBG_TRACE (MPLN, "plane(%d) not found. \n", plane_id);
+    XDBG_TRACE (MPLN, "plane(%"PRIuPTR") not found. \n", plane_id);
 
     return NULL;
 }
@@ -200,7 +200,7 @@ _secPlaneTableFindEmpty (void)
 
 static SECPlaneFb*
 _secPlaneTableFindBuffer (SECPlaneTable *table,
-                          int fb_id,
+                          uint32_t fb_id,
                           tbm_bo bo,
                           SECVideoBuf *vbuf)
 {
@@ -223,7 +223,7 @@ _secPlaneTableFindBuffer (SECPlaneTable *table,
             XDBG_RETURN_VAL_IF_FAIL (VBUF_IS_VALID (vbuf), NULL);
 
             if (fb->type == PLANE_FB_TYPE_DEFAULT)
-                if (fb->buffer.vbuf == vbuf && fb->buffer.vbuf->stamp == vbuf->stamp)
+                if (fb->buffer.vbuf == vbuf && fb->buffer.vbuf->stamp.u32 == vbuf->stamp.u32)
                     return fb;
         }
     }
@@ -246,7 +246,7 @@ _secPlaneTableFreeBuffer (SECPlaneTable *table, SECPlaneFb *fb)
     {
         if (!fb->buffer_gone && fb->buffer.vbuf)
             secUtilRemoveFreeVideoBufferFunc (fb->buffer.vbuf, _secPlaneFreeVbuf,
-                                              (void*)table->plane_id);
+                                              setunitype32(table->plane_id));
     }
 
     xorg_list_del (&fb->link);
@@ -935,11 +935,11 @@ secPlaneDeinit (ScrnInfoPtr pScrn, SECPlanePrivPtr pPlanePriv)
 }
 
 void
-secPlaneShowAll (int crtc_id)
+secPlaneShowAll (uint32_t crtc_id)
 {
     int i;
 
-    XDBG_TRACE (MPLN, "crtc(%d) \n", crtc_id);
+    XDBG_TRACE (MPLN, "crtc(%"PRIdPTR") \n", crtc_id);
 
     for (i = 0; i < plane_table_size; i++)
     {
@@ -963,27 +963,27 @@ secPlaneShowAll (int crtc_id)
     }
 }
 
-int
+uint32_t
 secPlaneGetID (void)
 {
     SECPlaneTable *table = _secPlaneTableFindEmpty ();
 
     if (!table)
     {
-        XDBG_ERROR (MPLN, "No avaliable plane ID. %d\n", -1);
+        XDBG_ERROR (MPLN, "No avaliable plane ID\n");
         return -1;
     }
 
     table->in_use = TRUE;
     table->onoff = TRUE;
 
-    XDBG_TRACE (MPLN, "plane(%d). \n", table->plane_id);
+    XDBG_TRACE (MPLN, "plane(%u). \n", table->plane_id);
 
     return table->plane_id;
 }
 
 void
-secPlaneFreeId (int plane_id)
+secPlaneFreeId (uint32_t plane_id)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
     SECPlaneFb *fb = NULL, *fb_next = NULL;
@@ -1024,11 +1024,11 @@ secPlaneFreeId (int plane_id)
     table->in_use = FALSE;
     table->onoff = TRUE;
 
-    XDBG_TRACE (MPLN, "plane(%d).\n", table->plane_id);
+    XDBG_TRACE (MPLN, "plane(%u).\n", table->plane_id);
 }
 
 Bool
-secPlaneTrun (int plane_id, Bool onoff, Bool user)
+secPlaneTrun (uint32_t plane_id, Bool onoff, Bool user)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
     SECPtr pSec;
@@ -1058,7 +1058,7 @@ secPlaneTrun (int plane_id, Bool onoff, Bool user)
                 XDBG_WARNING (MPLN, "_secPlaneShowInternal failed. \n");
             }
 
-            XDBG_DEBUG (MPLN, "%s >> plane(%d,%d,%d) '%s'. \n", (user)?"user":"Xorg",
+            XDBG_DEBUG (MPLN, "%s >> plane(%u,%u,%d) '%s'. \n", (user)?"user":"Xorg",
                         plane_id, table->crtc_id, table->zpos, (onoff)?"ON":"OFF");
         }
     }
@@ -1072,7 +1072,7 @@ secPlaneTrun (int plane_id, Bool onoff, Bool user)
                 XDBG_WARNING (MPLN, "_secPlaneHideInternal failed. \n");
             }
 
-            XDBG_DEBUG (MPLN, "%s >> plane(%d,%d,%d) '%s'. \n", (user)?"user":"Xorg",
+            XDBG_DEBUG (MPLN, "%s >> plane(%u,%u,%d) '%s'. \n", (user)?"user":"Xorg",
                         plane_id, table->crtc_id, table->zpos, (onoff)?"ON":"OFF");
         }
 
@@ -1083,7 +1083,7 @@ secPlaneTrun (int plane_id, Bool onoff, Bool user)
 }
 
 Bool
-secPlaneTrunStatus (int plane_id)
+secPlaneTrunStatus (uint32_t plane_id)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
 
@@ -1093,7 +1093,7 @@ secPlaneTrunStatus (int plane_id)
 }
 
 void
-secPlaneFreezeUpdate (int plane_id, Bool enable)
+secPlaneFreezeUpdate (uint32_t plane_id, Bool enable)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
 
@@ -1103,7 +1103,7 @@ secPlaneFreezeUpdate (int plane_id, Bool enable)
 }
 
 Bool
-secPlaneRemoveBuffer (int plane_id, int fb_id)
+secPlaneRemoveBuffer (uint32_t plane_id, uint32_t fb_id)
 {
     SECPlaneTable *table;
     SECPlaneFb *fb;
@@ -1118,17 +1118,17 @@ secPlaneRemoveBuffer (int plane_id, int fb_id)
 
     _secPlaneTableFreeBuffer (table, fb);
 
-    XDBG_TRACE (MPLN, "plane(%d) fb(%d). \n", plane_id, fb_id);
+    XDBG_TRACE (MPLN, "plane(%u) fb(%u). \n", plane_id, fb_id);
 
     return TRUE;
 }
 
-int
-secPlaneAddBo (int plane_id, tbm_bo bo)
+uint32_t
+secPlaneAddBo (uint32_t plane_id, tbm_bo bo)
 {
     SECPlaneTable *table;
     SECPlaneFb *fb;
-    int fb_id = 0;
+    uint32_t fb_id = 0;
     SECFbBoDataPtr bo_data = NULL;
     int width, height;
 
@@ -1163,14 +1163,14 @@ secPlaneAddBo (int plane_id, tbm_bo bo)
 
     fb->buffer.bo = tbm_bo_ref (bo);
 
-    XDBG_TRACE (MPLN, "plane(%d) bo(%d,%dx%d)\n", plane_id,
+    XDBG_TRACE (MPLN, "plane(%u) bo(%u,%dx%d)\n", plane_id,
                 fb_id, fb->width, fb->height);
 
     return fb->id;
 }
 
-int
-secPlaneAddBuffer (int plane_id, SECVideoBuf *vbuf)
+uint32_t
+secPlaneAddBuffer (uint32_t plane_id, SECVideoBuf *vbuf)
 {
     SECPlaneTable *table;
     SECPlaneFb *fb;
@@ -1197,17 +1197,16 @@ secPlaneAddBuffer (int plane_id, SECVideoBuf *vbuf)
     fb->height = vbuf->height;
 
     fb->buffer.vbuf = vbuf;
+    secUtilAddFreeVideoBufferFunc (vbuf, _secPlaneFreeVbuf, setunitype32(plane_id));
 
-    secUtilAddFreeVideoBufferFunc (vbuf, _secPlaneFreeVbuf, (void*)plane_id);
-
-    XDBG_TRACE (MPLN, "plane(%d) vbuf(%ld,%d,%dx%d)\n", plane_id,
+    XDBG_TRACE (MPLN, "plane(%u) vbuf(%u,%u,%dx%d)\n", plane_id,
                 vbuf->stamp, vbuf->fb_id, vbuf->width, vbuf->height);
 
     return fb->id;
 }
 
-int
-secPlaneGetBuffer (int plane_id, tbm_bo bo, SECVideoBuf *vbuf)
+uint32_t
+secPlaneGetBuffer (uint32_t plane_id, tbm_bo bo, SECVideoBuf *vbuf)
 {
     SECPlaneTable *table;
     SECPlaneFb *fb;
@@ -1223,7 +1222,7 @@ secPlaneGetBuffer (int plane_id, tbm_bo bo, SECVideoBuf *vbuf)
 }
 
 void
-secPlaneGetBufferSize (int plane_id, int fb_id, int *width, int *height)
+secPlaneGetBufferSize (uint32_t plane_id, uint32_t fb_id, int *width, int *height)
 {
     SECPlaneTable *table;
     SECPlaneFb *fb;
@@ -1242,7 +1241,7 @@ secPlaneGetBufferSize (int plane_id, int fb_id, int *width, int *height)
 }
 
 Bool
-secPlaneAttach (int plane_id, int fb_id)
+secPlaneAttach (uint32_t plane_id, uint32_t fb_id)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
     SECPlaneFb *fb;
@@ -1255,13 +1254,13 @@ secPlaneAttach (int plane_id, int fb_id)
 
     table->cur_fb = fb;
 
-    XDBG_DEBUG (MPLN, "plane(%d) fb(%d)\n", plane_id, fb_id);
+    XDBG_DEBUG (MPLN, "plane(%u) fb(%u)\n", plane_id, fb_id);
 
     return TRUE;
 }
 
 Bool
-secPlaneIsVisible (int plane_id)
+secPlaneIsVisible (uint32_t  plane_id)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
 
@@ -1271,7 +1270,7 @@ secPlaneIsVisible (int plane_id)
 }
 
 Bool
-secPlaneShow (int plane_id, int crtc_id,
+secPlaneShow (uint32_t  plane_id, uint32_t  crtc_id,
               int src_x, int src_y, int src_w, int src_h,
               int dst_x, int dst_y, int dst_w, int dst_h,
               int zpos, Bool need_update)
@@ -1290,7 +1289,7 @@ secPlaneShow (int plane_id, int crtc_id,
 
     if (temp && temp->plane_id != plane_id)
     {
-        XDBG_ERROR (MPLN, "can't change zpos. plane(%d) is at zpos(%d) crtc(%d) \n",
+        XDBG_ERROR (MPLN, "can't change zpos. plane(%u) is at zpos(%d) crtc(%u) \n",
                     temp->plane_id, temp->zpos, crtc_id);
         return FALSE;
     }
@@ -1299,7 +1298,7 @@ secPlaneShow (int plane_id, int crtc_id,
         table->crtc_id = crtc_id;
     else if (table->crtc_id != crtc_id)
     {
-        XDBG_ERROR (MPLN, "can't change crtc. plane(%d) is on crtc(%d) \n",
+        XDBG_ERROR (MPLN, "can't change crtc. plane(%u) is on crtc(%u) \n",
                     table->plane_id, table->zpos);
         return FALSE;
     }
@@ -1314,7 +1313,7 @@ secPlaneShow (int plane_id, int crtc_id,
 }
 
 Bool
-secPlaneHide (int plane_id)
+secPlaneHide (uint32_t  plane_id)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
 
@@ -1323,7 +1322,7 @@ secPlaneHide (int plane_id)
     if (!table->visible)
         return TRUE;
 
-    XDBG_TRACE (MPLN, "plane(%d) crtc(%d)\n", table->plane_id, table->crtc_id);
+    XDBG_TRACE (MPLN, "plane(%u) crtc(%u)\n", table->plane_id, table->crtc_id);
 
     _secPlaneHideInternal (table);
 
@@ -1331,7 +1330,7 @@ secPlaneHide (int plane_id)
 }
 
 Bool
-secPlaneMove (int plane_id, int x, int y)
+secPlaneMove (uint32_t  plane_id, int x, int y)
 {
     SECPlaneTable *table = _secPlaneTableFind (plane_id);
     xRectangle dst;
@@ -1351,7 +1350,7 @@ secPlaneMove (int plane_id, int x, int y)
             return FALSE;
         }
 
-    XDBG_TRACE (MPLN, "plane(%d) moved to (%d,%d)\n", table->plane_id, x, y);
+    XDBG_TRACE (MPLN, "plane(%u) moved to (%d,%d)\n", table->plane_id, x, y);
 
     return TRUE;
 }

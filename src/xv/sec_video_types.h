@@ -148,7 +148,7 @@ typedef struct _SECVideoBuf
     Bool    dirty;
     Bool    need_reset;
 
-    unsigned int fb_id;      /* fb_id of vbuf */
+    uint32_t fb_id;      /* fb_id of vbuf */
 
     struct xorg_list free_funcs;
 
@@ -156,7 +156,12 @@ typedef struct _SECVideoBuf
     int     csc_range;
 
     struct xorg_list valid_link;   /* to check valid */
-    CARD32 stamp;
+    union
+    {
+        void* ptr;
+        uint32_t u32;
+        uint64_t u64;
+    }stamp;
     unsigned int ref_cnt;
     char   *func;
     int     flags;

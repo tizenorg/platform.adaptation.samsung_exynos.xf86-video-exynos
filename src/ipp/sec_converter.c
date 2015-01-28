@@ -69,7 +69,7 @@ typedef struct _SECCvtBuf
 
 struct _SECCvt
 {
-    CARD32        stamp;
+    uniType        stamp;
 
     int  prop_id;
 
@@ -130,7 +130,7 @@ _initList (void)
 }
 
 static SECCvt*
-_findCvt (CARD32 stamp)
+_findCvt (uniType stamp)
 {
     SECCvt *cur = NULL, *next = NULL;
 
@@ -140,7 +140,7 @@ _findCvt (CARD32 stamp)
     {
         xorg_list_for_each_entry_safe (cur, next, &cvt_list, link)
         {
-            if (cur->stamp == stamp)
+            if (cur->stamp.u32 == stamp.u32)
                 return cur;
         }
     }
@@ -228,7 +228,7 @@ _SetVbufConverting (SECVideoBuf *vbuf, SECCvt *cvt, Bool converting)
             }
         }
 
-        XDBG_ERROR (MCVT, "failed: %ld not found in %ld.\n", cvt->stamp, vbuf->stamp);
+        XDBG_ERROR (MCVT, "failed: %lu not found in %lu.\n", cvt->stamp.u32, vbuf->stamp.u32);
         return FALSE;
     }
     else
@@ -358,7 +358,7 @@ _secCvtQueue (SECCvt *cvt, SECCvtBuf *cbuf)
     buf.ops_id = (cbuf->type == CVT_TYPE_SRC) ? EXYNOS_DRM_OPS_SRC : EXYNOS_DRM_OPS_DST;
     buf.buf_type = IPP_BUF_ENQUEUE;
     buf.buf_id = cbuf->index = index;
-    buf.user_data = (__u64)cvt->stamp;
+    buf.user_data = cvt->stamp.u64;
 
     for (i = 0; i < EXYNOS_DRM_PLANAR_MAX; i++)
         buf.handle[i] = (__u32)cbuf->handles[i];
@@ -401,7 +401,7 @@ _secCvtDequeue (SECCvt *cvt, SECCvtBuf *cbuf)
     buf.ops_id = (cbuf->type == CVT_TYPE_SRC) ? EXYNOS_DRM_OPS_SRC : EXYNOS_DRM_OPS_DST;
     buf.buf_type = IPP_BUF_DEQUEUE;
     buf.buf_id = cbuf->index;
-    buf.user_data = (__u64)cvt->stamp;
+    buf.user_data = cvt->stamp.u64;
 
     for (i = 0; i < EXYNOS_DRM_PLANAR_MAX; i++)
         buf.handle[i] = (__u32)cbuf->handles[i];
@@ -633,7 +633,7 @@ SECCvt*
 secCvtCreate (ScrnInfoPtr pScrn, SECCvtOp op)
 {
     SECCvt *cvt;
-    CARD32 stamp = GetTimeInMillis ();
+    uniType stamp = {.u32 = GetTimeInMillis ()};
 
     _initList ();
 
@@ -641,7 +641,7 @@ secCvtCreate (ScrnInfoPtr pScrn, SECCvtOp op)
     XDBG_RETURN_VAL_IF_FAIL (op >= 0 && op < CVT_OP_MAX, NULL);
 
     while (_findCvt (stamp))
-        stamp++;
+        stamp.u32++;
 
     cvt = calloc (1, sizeof (SECCvt));
     XDBG_RETURN_VAL_IF_FAIL (cvt != NULL, NULL);
@@ -953,7 +953,7 @@ secCvtRemoveCallback (SECCvt *cvt, CvtFunc func, void *data)
 void
 secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
 {
-    CARD32 stamp = (CARD32)data;
+    uniType stamp = {.ptr = data};
     SECCvt *cvt;
     SECCvtBuf *src_cbuf, *dst_cbuf;
     SECVideoBuf *src_vbuf, *dst_vbuf;
@@ -964,7 +964,7 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
     cvt = _findCvt (stamp);
     if (!cvt)
     {
-        XDBG_DEBUG (MCVT, "invalid cvt's stamp (%ld).\n", stamp);
+        XDBG_DEBUG (MCVT, "invalid cvt's stamp (%lu).\n", stamp.u32);
         return;
     }
 
@@ -993,7 +993,7 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
              * for every event. If a event has been skipped, to call _secCvtDequeued
              * forcely, we call secCvtHandleIppEvent recursivly.
              */
-            secCvtHandleIppEvent (0, indice, (void*)cvt->stamp, TRUE);
+            secCvtHandleIppEvent (0, indice, cvt->stamp.ptr, TRUE);
         }
         else
             break;
@@ -1012,15 +1012,15 @@ secCvtHandleIppEvent (int fd, unsigned int *buf_idx, void *data, Bool error)
         CARD32 cur, sub;
         cur = GetTimeInMillis ();
         sub = cur - src_cbuf->begin;
-        ErrorF ("cvt(%p)   ipp interval  : %6ld ms\n", cvt, sub);
+        ErrorF ("cvt(%p)   ipp interval  : %6"PRIXID" ms\n", cvt, sub);
     }
 
     src_vbuf = src_cbuf->vbuf;
     dst_vbuf = dst_cbuf->vbuf;
 
     XDBG_DEBUG (MVBUF, "<== ipp (%ld,%d,%d : %ld,%d,%d) \n",
-                src_vbuf->stamp, VBUF_IS_CONVERTING (src_vbuf), src_vbuf->showing,
-                dst_vbuf->stamp, VBUF_IS_CONVERTING (dst_vbuf), dst_vbuf->showing);
+                src_vbuf->stamp.u32, VBUF_IS_CONVERTING (src_vbuf), src_vbuf->showing,
+                dst_vbuf->stamp.u32, VBUF_IS_CONVERTING (dst_vbuf), dst_vbuf->showing);
 
     if (!cvt->first_event)
     {
@@ -1083,5 +1083,5 @@ secCvtGetStamp (SECCvt *cvt)
     {
         return 0;
     }
-    return cvt->stamp;
+    return cvt->stamp.u32;
 }

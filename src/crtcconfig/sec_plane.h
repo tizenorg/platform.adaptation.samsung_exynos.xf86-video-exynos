@@ -45,7 +45,7 @@ typedef struct _SECPlanePriv
     SECModePtr pSecMode;
     drmModePlanePtr mode_plane;
 
-    int plane_id;
+    uint32_t plane_id;
 
     struct xorg_list link;
 } SECPlanePrivRec, *SECPlanePrivPtr;
@@ -53,30 +53,30 @@ typedef struct _SECPlanePriv
 void   secPlaneInit (ScrnInfoPtr pScrn, SECModePtr pSecMode, int num);
 void   secPlaneDeinit (ScrnInfoPtr pScrn, SECPlanePrivPtr pPlanePriv);
 
-void   secPlaneShowAll (int crtc_id);
-int    secPlaneGetID   (void);
-void   secPlaneFreeId  (int plane_id);
-Bool   secPlaneTrun    (int plane_id, Bool onoff, Bool user);
-Bool   secPlaneTrunStatus (int plane_id);
-void   secPlaneFreezeUpdate (int plane_id, Bool enable);
+void   secPlaneShowAll (uint32_t crtc_id);
+uint32_t    secPlaneGetID   (void);
+void   secPlaneFreeId  (uint32_t plane_id);
+Bool   secPlaneTrun    (uint32_t plane_id, Bool onoff, Bool user);
+Bool   secPlaneTrunStatus (uint32_t plane_id);
+void   secPlaneFreezeUpdate (uint32_t plane_id, Bool enable);
 
-Bool   secPlaneRemoveBuffer (int plane_id, int fb_id);
-int    secPlaneAddBo        (int plane_id, tbm_bo bo);
-int    secPlaneAddBuffer    (int plane_id, SECVideoBuf *vbuf);
+Bool   secPlaneRemoveBuffer (uint32_t plane_id, uint32_t fb_id);
+uint32_t secPlaneAddBo        (uint32_t plane_id, tbm_bo bo);
+uint32_t secPlaneAddBuffer    (uint32_t plane_id, SECVideoBuf *vbuf);
 
-int    secPlaneGetBuffer     (int plane_id, tbm_bo bo, SECVideoBuf *vbuf);
-void   secPlaneGetBufferSize (int plane_id, int fb_id, int *width, int *height);
+uint32_t    secPlaneGetBuffer     (uint32_t plane_id, tbm_bo bo, SECVideoBuf *vbuf);
+void   secPlaneGetBufferSize (uint32_t plane_id, uint32_t fb_id, int *width, int *height);
 
-Bool   secPlaneAttach     (int plane_id, int fb_id);
+Bool   secPlaneAttach     (uint32_t plane_id, uint32_t fb_id);
 
-Bool   secPlaneIsVisible (int plane_id);
-Bool   secPlaneHide (int plane_id);
-Bool   secPlaneShow (int plane_id, int crtc_id,
+Bool   secPlaneIsVisible (uint32_t  plane_id);
+Bool   secPlaneHide (uint32_t plane_id);
+Bool   secPlaneShow (uint32_t plane_id, uint32_t crtc_id,
                      int src_x, int src_y, int src_w, int src_h,
                      int dst_x, int dst_y, int dst_w, int dst_h,
                      int zpos, Bool need_update);
 
-Bool   secPlaneMove (int plane_id, int x, int y);
+Bool   secPlaneMove (uint32_t plane_id, int x, int y);
 
 /* for debug */
 char*  secPlaneDump (char *reply, int *len);

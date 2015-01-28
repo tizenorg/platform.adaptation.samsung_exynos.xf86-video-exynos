@@ -66,7 +66,6 @@ AM_CFLAGS += -I@top_srcdir@/src/ipp
 
 # g2d
 exynos_drv_la_SOURCES += \
-        accel/sec_exa_g2d.c \
         g2d/fimg2d.c \
         g2d/util_g2d.c
 AM_CFLAGS += -I@top_srcdir@/src/g2d

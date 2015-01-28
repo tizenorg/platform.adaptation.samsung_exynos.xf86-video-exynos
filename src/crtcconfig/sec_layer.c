@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fcntl.h>
 #include <errno.h>
 #include <stdlib.h>
-
+#include <stddef.h>
 #include "sec.h"
 #include "sec_util.h"
 #include "sec_crtc.h"
@@ -77,7 +77,7 @@ struct _SECLayer
     int         crtc_id;
 
     /* for buffer */
-    int         fb_id;
+    intptr_t         fb_id;
 
     int         offset_x;
     int         offset_y;
@@ -298,7 +298,7 @@ static void
 _secLayerWatchVblank (SECLayer *layer)
 {
     CARD64 ust, msc, target_msc;
-    int pipe, flip = 1;
+    uintptr_t pipe, flip = 1;
     SECPtr pSec = SECPTR (layer->pScrn);
 
     /* if lcd is off, do not request vblank information */
@@ -389,7 +389,7 @@ _secLayerGetBufferID (SECLayer *layer, SECVideoBuf *vbuf)
                     FOURCC_STR (drmfmt));
     }
 
-    XDBG_DEBUG (MVBUF, "layer(%p) vbuf(%ld) fb_id(%d) added. \n", layer, vbuf->stamp, vbuf->fb_id);
+    XDBG_DEBUG (MVBUF, "layer(%p) vbuf(%ld) fb_id(%d) added. \n", layer, vbuf->stamp.u32, vbuf->fb_id);
 }
 
 Bool
@@ -662,7 +662,7 @@ secLayerHide (SECLayer *layer)
         layer->wait_vbuf->showing = FALSE;
         XDBG_DEBUG (MVBUF, "layer(%p) <-- %s (%ld,%d,%d) \n", layer,
                     (layer->output==LAYER_OUTPUT_LCD)?"LCD":"TV",
-                    layer->wait_vbuf->stamp, VBUF_IS_CONVERTING (layer->wait_vbuf),
+                    layer->wait_vbuf->stamp.u32, VBUF_IS_CONVERTING (layer->wait_vbuf),
                     layer->wait_vbuf->showing);
         secUtilVideoBufferUnref (layer->wait_vbuf);
     }
@@ -678,7 +678,7 @@ secLayerHide (SECLayer *layer)
         layer->showing_vbuf->showing = FALSE;
         XDBG_DEBUG (MVBUF, "layer(%p) <-- %s (%ld,%d,%d) \n", layer,
                     (layer->output==LAYER_OUTPUT_LCD)?"LCD":"TV",
-                    layer->showing_vbuf->stamp, VBUF_IS_CONVERTING (layer->showing_vbuf),
+                    layer->showing_vbuf->stamp.u32, VBUF_IS_CONVERTING (layer->showing_vbuf),
                     layer->showing_vbuf->showing);
         secUtilVideoBufferUnref (layer->showing_vbuf);
     }
@@ -1017,7 +1017,7 @@ secLayerSetBuffer (SECLayer *layer, SECVideoBuf *vbuf)
 
     if (layer->wait_vbuf && layer->pending_vbuf)
     {
-        XDBG_TRACE (MLYR, "pending_vbuf(%ld) exists.\n", layer->pending_vbuf->stamp);
+        XDBG_TRACE (MLYR, "pending_vbuf(%ld) exists.\n", layer->pending_vbuf->stamp.u32);
         return 0;
     }
 
@@ -1028,7 +1028,7 @@ secLayerSetBuffer (SECLayer *layer, SECVideoBuf *vbuf)
     {
         layer->pending_vbuf = secUtilVideoBufferRef (vbuf);
         layer->pending_vbuf->showing = TRUE;
-        XDBG_TRACE (MLYR, "pending vbuf(%ld).\n", layer->pending_vbuf->stamp);
+        XDBG_TRACE (MLYR, "pending vbuf(%ld).\n", layer->pending_vbuf->stamp.u32);
         return vbuf->fb_id;
     }
 
@@ -1060,7 +1060,7 @@ secLayerSetBuffer (SECLayer *layer, SECVideoBuf *vbuf)
         layer->wait_vbuf->showing = TRUE;
         XDBG_DEBUG (MVBUF, "layer(%p) --> %s (%ld,%d,%d) \n", layer,
                     (layer->output==LAYER_OUTPUT_LCD)?"LCD":"TV",
-                    layer->wait_vbuf->stamp,
+                    layer->wait_vbuf->stamp.u32,
                     VBUF_IS_CONVERTING (layer->wait_vbuf),
                     layer->wait_vbuf->showing);
 
@@ -1098,7 +1098,7 @@ secLayerVBlankEventHandler (unsigned int frame, unsigned int tv_sec,
                             unsigned int tv_usec, void *event_data)
 {
     SECLayer *layer = NULL, *layer_next = NULL;
-    int pipe = (int)event_data;
+    intptr_t pipe = (intptr_t)event_data;
 
     XDBG_RETURN_IF_FAIL (pipe < LAYER_OUTPUT_MAX);
 
@@ -1110,7 +1110,7 @@ secLayerVBlankEventHandler (unsigned int frame, unsigned int tv_sec,
 
     xorg_list_for_each_entry_safe (layer, layer_next, &crtc_layers, link)
     {
-        int crtc_pipe = secDisplayCrtcPipe (layer->pScrn, _GetCrtcID (layer));
+        intptr_t crtc_pipe = secDisplayCrtcPipe (layer->pScrn, _GetCrtcID (layer));
 
         if (!layer->enable_vblank || !layer->wait_vblank)
             continue;
@@ -1133,7 +1133,7 @@ secLayerVBlankEventHandler (unsigned int frame, unsigned int tv_sec,
 
             if (layer->pending_vbuf && VBUF_IS_VALID (layer->pending_vbuf))
             {
-                int fb_id;
+                uint32_t fb_id;
 
                 layer->wait_vbuf = layer->pending_vbuf;
                 layer->pending_vbuf = NULL;
@@ -1160,7 +1160,7 @@ secLayerVBlankEventHandler (unsigned int frame, unsigned int tv_sec,
             if (pSec->pVideoPriv->video_fps)
                 _countFps (layer);
 
-            XDBG_TRACE (MLYR, "layer(%p) fb_id(%d) now showing frame(%d) (%ld,%ld,%ld) => crtc(%d) pos(%d). \n",
+            XDBG_TRACE (MLYR, "layer(%p) fb_id(%u) now showing frame(%d) (%ld,%ld,%ld) => crtc(%d) pos(%d). \n",
                         layer, layer->fb_id, frame,
                         VSTMAP(layer->pending_vbuf), VSTMAP(layer->wait_vbuf), VSTMAP(layer->showing_vbuf),
                         _GetCrtcID (layer), layer->lpos);
