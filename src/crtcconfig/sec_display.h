@@ -184,11 +184,11 @@ SECDisplayConnMode secDisplayGetDispConnMode (ScrnInfoPtr pScrn);
 Bool secDisplayInitDispMode (ScrnInfoPtr pScrn, SECDisplayConnMode conn_mode);
 void secDisplayDeinitDispMode (ScrnInfoPtr pScrn);
 
-Bool secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc);
+Bool secDisplayGetCurMSC (ScrnInfoPtr pScrn, intptr_t pipe, CARD64 *ust, CARD64 *msc);
 Bool secDisplayVBlank (ScrnInfoPtr pScrn, int pipe, CARD64 *target_msc, int flip, SECVBlankInfoType type, void *vblank_info);
 int secDisplayDrawablePipe (DrawablePtr pDraw);
 
-int secDisplayCrtcPipe (ScrnInfoPtr pScrn, int crtc_id);
+intptr_t secDisplayCrtcPipe (ScrnInfoPtr pScrn, int crtc_id);
 
 Bool secDisplayUpdateRequest(ScrnInfoPtr pScrn);
 #ifdef NO_CRTC_MODE

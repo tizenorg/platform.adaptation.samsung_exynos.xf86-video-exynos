@@ -351,7 +351,7 @@ _secWbQueue (SECWb *wb, int index)
     buf.buf_type = IPP_BUF_ENQUEUE;
     buf.prop_id = wb->prop_id;
     buf.buf_id = index;
-    buf.user_data = (__u64)(unsigned int)wb;
+    buf.user_data =(__u64)(intptr_t)wb;
 
     for (j = 0; j < PLANAR_CNT; j++)
         buf.handle[j] = wb->dst_buf[index]->handles[j];
@@ -504,7 +504,7 @@ secWbHandleIppEvent (int fd, unsigned int *buf_idx, void *data)
         cur = GetTimeInMillis ();
         sub = cur - wb->prev_time;
         wb->prev_time = cur;
-        ErrorF ("wb evt interval  : %6ld ms\n", sub);
+        ErrorF ("wb evt interval  : %6"PRIXID" ms\n", sub);
     }
 
     if (pSec->wb_fps)
@@ -700,7 +700,7 @@ _secWbOpenDrm (SECWb *wb)
         buf.buf_type = IPP_BUF_ENQUEUE;
         buf.prop_id = wb->prop_id;
         buf.buf_id = i;
-        buf.user_data = (__u64)(unsigned int)wb;
+        buf.user_data = (__u64)(intptr_t)wb;
 
         XDBG_GOTO_IF_FAIL (wb->dst_buf[i] != NULL, fail_to_open);
 

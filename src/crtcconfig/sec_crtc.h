@@ -46,7 +46,7 @@ typedef struct _secCrtcPriv
     SECModePtr pSecMode;
     drmModeModeInfo kmode;
     drmModeCrtcPtr mode_crtc;
-    int pipe;
+    intptr_t pipe;
 
     int idx;
     tbm_bo front_bo;

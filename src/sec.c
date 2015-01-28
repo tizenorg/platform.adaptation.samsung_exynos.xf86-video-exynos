@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <xorg-server.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
 /* all driver need this */
 #include "xf86.h"
 #include "xf86_OSproc.h"
@@ -483,7 +482,7 @@ _checkDriverOptions (ScrnInfoPtr pScrn)
     int flip_bufs = 3;
 
     /* exa */
-    if (xf86ReturnOptValBool (pSec->Options, OPTION_EXA, FALSE))
+    if (xf86ReturnOptValBool (pSec->Options, OPTION_EXA, TRUE))
         pSec->is_exa = TRUE;
 
     /* sw exa */

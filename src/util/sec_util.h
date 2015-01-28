@@ -84,6 +84,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DUMP_DIR "/tmp/xdump"
 
+# ifdef LONG64
+#  define PRIXID	"u"
+# else
+#  define PRIXID	"lu"
+# endif
+
+typedef union
+{
+    void    *ptr;
+    uint32_t u32;
+    uint64_t u64;
+} uniType;
+
+
+
 int secUtilDumpBmp (const char * file, const void * data, int width, int height);
 int secUtilDumpRaw (const char * file, const void * data, int size);
 int secUtilDumpShm (int shmid, const void * data, int width, int height);
@@ -140,19 +155,19 @@ void secUtilConvertBos (ScrnInfoPtr pScrn, int src_id,
                         tbm_bo dst_bo, int dw, int dh, xRectangle *dr, int dstride,
                         Bool composite, int rotate);
 
-void secUtilFreeHandle        (ScrnInfoPtr scrn, unsigned int handle);
+void secUtilFreeHandle        (ScrnInfoPtr scrn, uint32_t handle);
 #ifdef LEGACY_INTERFACE
 Bool secUtilConvertPhyaddress (ScrnInfoPtr scrn, unsigned int phy_addr, int size, unsigned int *handle);
 Bool secUtilConvertHandle     (ScrnInfoPtr scrn, unsigned int handle, unsigned int *phy_addr, int *size);
 #endif
 
-typedef void (*DestroyDataFunc) (void *func_data, void *key_data);
+typedef void (*DestroyDataFunc) (uniType func_data, uniType key_data);
 
-void* secUtilListAdd     (void *list, void *key, void *key_data);
+void* secUtilListAdd     (void *list, void *key, uniType key_data);
 void* secUtilListRemove  (void *list, void *key);
-void* secUtilListGetData (void *list, void *key);
+uniType secUtilListGetData (void *list, void *key);
 Bool  secUtilListIsEmpty (void *list);
-void  secUtilListDestroyData (void *list, DestroyDataFunc func, void *func_data);
+void  secUtilListDestroyData (void *list, DestroyDataFunc func, uniType func_data);
 void  secUtilListDestroy (void *list);
 
 Bool  secUtilSetDrmProperty (SECModePtr pSecMode, unsigned int obj_id, unsigned int obj_type,
@@ -174,9 +189,9 @@ void         _secUtilFreeVideoBuffer   (SECVideoBuf *vbuf, const char *func);
 void         secUtilClearVideoBuffer   (SECVideoBuf *vbuf);
 Bool         _secUtilIsVbufValid       (SECVideoBuf *vbuf, const char *func);
 
-typedef void (*FreeVideoBufFunc) (SECVideoBuf *vbuf, void *data);
-void         secUtilAddFreeVideoBufferFunc     (SECVideoBuf *vbuf, FreeVideoBufFunc func, void *data);
-void         secUtilRemoveFreeVideoBufferFunc  (SECVideoBuf *vbuf, FreeVideoBufFunc func, void *data);
+typedef void (*FreeVideoBufFunc) (SECVideoBuf *vbuf, uniType data);
+void         secUtilAddFreeVideoBufferFunc     (SECVideoBuf *vbuf, FreeVideoBufFunc func, uniType data);
+void         secUtilRemoveFreeVideoBufferFunc  (SECVideoBuf *vbuf, FreeVideoBufFunc func, uniType data);
 
 #define secUtilAllocVideoBuffer(s,i,w,h,c,r,d)  _secUtilAllocVideoBuffer(s,i,w,h,c,r,d,__FUNCTION__)
 #define secUtilCreateVideoBuffer(s,i,w,h,d)     _secUtilCreateVideoBuffer(s,i,w,h,d,__FUNCTION__)
@@ -184,7 +199,7 @@ void         secUtilRemoveFreeVideoBufferFunc  (SECVideoBuf *vbuf, FreeVideoBufF
 #define secUtilFreeVideoBuffer(v)   _secUtilFreeVideoBuffer(v,__FUNCTION__)
 #define secUtilIsVbufValid(v)       _secUtilIsVbufValid(v,__FUNCTION__)
 #define VBUF_IS_VALID(v)            secUtilIsVbufValid(v)
-#define VSTMAP(v)            ((v)?(v)->stamp:0)
+#define VSTMAP(v)            ((v)?(v)->stamp.u32:0)
 #define VBUF_IS_CONVERTING(v)       (!xorg_list_is_empty (&((v)->convert_info)))
 
 int findActiveConnector (ScrnInfoPtr pScrn);
@@ -197,4 +212,6 @@ char*  secUtilDumpVideoBuffer (char *reply, int *len);
          &pos->member != (head);\
          pos = tmp, tmp = __container_of(pos->member.prev, tmp, member))
 
+uniType setunitypeptr(void* ptr);
+uniType setunitype32(uint32_t u32);
 #endif /* __SEC_UTIL_H__ */

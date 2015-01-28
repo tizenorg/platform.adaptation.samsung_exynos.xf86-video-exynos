@@ -569,7 +569,7 @@ _getSwapType (DrawablePtr pDraw, DRI2BufferPtr pFrontBuf,
 
             if (!_canFlip(pDraw))
             {
-                ErrorF ("@@@ [%10.3f] %lx : flip to blit\n", GetTimeInMillis()/1000.0, pDraw->id);
+                ErrorF ("@@@ [%10.3f] %"PRIXID" : flip to blit\n", GetTimeInMillis()/1000.0, pDraw->id);
                 swap_type = DRI2_BLIT;
             }
         }
@@ -1083,7 +1083,7 @@ _saveDrawable (DrawablePtr pDraw, DRI2BufferPtr pBackBuf, DRI2FrameEventType swa
     pExaPixPriv = exaGetPixmapDriverPrivate (pPix);
     XDBG_RETURN_IF_FAIL (pExaPixPriv != NULL);
 
-    snprintf (file, sizeof(file), "%03d_%s_%lx_%03d.%s",
+    snprintf (file, sizeof(file), "%03d_%s_%"PRIXID"_%03d.%s",
               pSec->flip_cnt, type[swap_type], pDraw->id, pExaPixPriv->dump_cnt,
               pSec->dump_type);
 
