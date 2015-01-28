@@ -533,7 +533,7 @@ draw_done:
         CARD32 cur, sub;
         cur = GetTimeInMillis ();
         sub = cur - pPort->prev_time;
-        ErrorF ("damage send           : %6ld ms\n", sub);
+        ErrorF ("damage send           : %6"PRIXID" ms\n", sub);
     }
 }
 
@@ -1927,7 +1927,7 @@ SECVirtualVideoPutStill (ScrnInfoPtr pScrn,
         cur = GetTimeInMillis ();
         sub = cur - pPort->prev_time;
         pPort->prev_time = cur;
-        ErrorF ("getstill interval     : %6ld ms\n", sub);
+        ErrorF ("getstill interval     : %6"PRIXID" ms\n", sub);
     }
 
     if (pPort->retire_timer)

@@ -1364,7 +1364,7 @@ CANT_CONVERT:
 }
 
 void
-secUtilFreeHandle (ScrnInfoPtr scrn, unsigned int handle)
+secUtilFreeHandle (ScrnInfoPtr scrn, uint32_t handle)
 {
     struct drm_gem_close close;
     SECPtr pSec;
@@ -1448,7 +1448,7 @@ secUtilConvertHandle (ScrnInfoPtr scrn, unsigned int handle,
 typedef struct _ListData
 {
     void *key;
-    void *data;
+    uniType data;
 
     struct xorg_list link;
 } ListData;
@@ -1470,7 +1470,7 @@ _secUtilListGet (void *list, void *key)
 }
 
 void*
-secUtilListAdd (void *list, void *key, void *user_data)
+secUtilListAdd (void *list, void *key, uniType user_data)
 {
     ListData *data;
 
@@ -1520,18 +1520,17 @@ secUtilListRemove (void *list, void *key)
     return list;
 }
 
-void*
+uniType
 secUtilListGetData (void *list, void *key)
 {
     ListData *data;
-
-    XDBG_RETURN_VAL_IF_FAIL (key != NULL, NULL);
+    uniType ret = {0};
+    XDBG_RETURN_VAL_IF_FAIL (key != NULL, ret);
 
     data = _secUtilListGet (list, key);
     if (data)
-        return data->data;
-
-    return NULL;
+        ret = data->data;
+    return ret;
 }
 
 Bool
@@ -1544,7 +1543,7 @@ secUtilListIsEmpty (void *list)
 }
 
 void
-secUtilListDestroyData (void *list, DestroyDataFunc func, void *func_data)
+secUtilListDestroyData (void *list, DestroyDataFunc func, uniType func_data)
 {
     ListData *cur = NULL, *next = NULL;
     struct xorg_list *l;
@@ -1669,7 +1668,7 @@ secUtilEnsureExternalCrtc (ScrnInfoPtr scrn)
 typedef struct _VBufFreeFuncInfo
 {
     FreeVideoBufFunc  func;
-    void             *data;
+    uniType            data;
     struct xorg_list  link;
 } VBufFreeFuncInfo;
 
@@ -1949,7 +1948,7 @@ _findVideoBuffer (CARD32 stamp)
 
     xorg_list_for_each_entry_safe (cur, next, &vbuf_lists, valid_link)
     {
-        if (cur->stamp == stamp)
+        if (cur->stamp.u32 == stamp)
             return cur;
     }
 
@@ -2054,13 +2053,13 @@ _secUtilAllocVideoBuffer (ScrnInfoPtr scrn, int id, int width, int height,
     stamp = GetTimeInMillis ();
     while (_findVideoBuffer (stamp))
         stamp++;
-    vbuf->stamp = stamp;
+    vbuf->stamp.u32 = stamp;
 
     vbuf->func = strdup (func);
     vbuf->flags = flags;
     vbuf->scanout = scanout;
 
-    XDBG_DEBUG (MVBUF, "%ld alloc(flags:%x, scanout:%d): %s\n", vbuf->stamp, flags, scanout, func);
+    XDBG_DEBUG (MVBUF, "%ld alloc(flags:%x, scanout:%d): %s\n", vbuf->stamp.u32, flags, scanout, func);
 
     return vbuf;
 
@@ -2114,12 +2113,12 @@ _secUtilCreateVideoBuffer (ScrnInfoPtr scrn, int id, int width, int height, Bool
     stamp = GetTimeInMillis ();
     while (_findVideoBuffer (stamp))
         stamp++;
-    vbuf->stamp = stamp;
+    vbuf->stamp.u32 = stamp;
 
     vbuf->func = strdup (func);
     vbuf->flags = -1;
 
-    XDBG_DEBUG (MVBUF, "%ld create: %s\n", vbuf->stamp, func);
+    XDBG_DEBUG (MVBUF, "%u create: %s\n", vbuf->stamp.u32, func);
 
     return vbuf;
 
@@ -2186,15 +2185,15 @@ _secUtilFreeVideoBuffer (SECVideoBuf *vbuf, const char *func)
 
     if (vbuf->fb_id > 0)
     {
-        XDBG_DEBUG (MVBUF, "vbuf(%ld) fb_id(%d) removed. \n", vbuf->stamp, vbuf->fb_id);
+        XDBG_DEBUG (MVBUF, "vbuf(%ld) fb_id(%d) removed. \n", vbuf->stamp.u32, vbuf->fb_id);
         drmModeRmFB (SECPTR(vbuf->pScrn)->drm_fd, vbuf->fb_id);
     }
 
     xorg_list_del (&vbuf->valid_link);
 
-    XDBG_DEBUG (MVBUF, "%ld freed: %s\n", vbuf->stamp, func);
+    XDBG_DEBUG (MVBUF, "%ld freed: %s\n", vbuf->stamp.u32, func);
 
-    vbuf->stamp = 0;
+    vbuf->stamp.u32 = 0;
 
     if (vbuf->func)
         free (vbuf->func);
@@ -2281,11 +2280,11 @@ _secUtilIsVbufValid (SECVideoBuf *vbuf, const char *func)
     _secUtilInitVbuf ();
 
     VBUF_RETURN_VAL_IF_FAIL (vbuf != NULL, FALSE);
-    VBUF_RETURN_VAL_IF_FAIL (vbuf->stamp != 0, FALSE);
+    VBUF_RETURN_VAL_IF_FAIL (vbuf->stamp.u32 != 0, FALSE);
 
     xorg_list_for_each_entry_safe (cur, next, &vbuf_lists, valid_link)
     {
-        if (cur->stamp == vbuf->stamp)
+        if (cur->stamp.u32 == vbuf->stamp.u32)
             return TRUE;
     }
 
@@ -2293,13 +2292,13 @@ _secUtilIsVbufValid (SECVideoBuf *vbuf, const char *func)
 }
 
 static VBufFreeFuncInfo*
-_secUtilFindFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, void *data)
+_secUtilFindFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, uniType data)
 {
     VBufFreeFuncInfo *cur = NULL, *next = NULL;
 
     xorg_list_for_each_entry_safe (cur, next, &vbuf->free_funcs, link)
     {
-        if (cur->func == func && cur->data == data)
+        if (cur->func == func && cur->data.ptr == data.ptr)
             return cur;
     }
 
@@ -2307,10 +2306,9 @@ _secUtilFindFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, void 
 }
 
 void
-secUtilAddFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, void *data)
+secUtilAddFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, uniType data)
 {
     VBufFreeFuncInfo *info;
-
     XDBG_RETURN_IF_FAIL (VBUF_IS_VALID (vbuf));
     XDBG_RETURN_IF_FAIL (func != NULL);
 
@@ -2328,7 +2326,7 @@ secUtilAddFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, void *d
 }
 
 void
-secUtilRemoveFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, void *data)
+secUtilRemoveFreeVideoBufferFunc (SECVideoBuf *vbuf, FreeVideoBufFunc func, uniType data)
 {
     VBufFreeFuncInfo *info;
 
@@ -2359,10 +2357,10 @@ secUtilDumpVideoBuffer (char *reply, int *len)
 
     xorg_list_for_each_entry_safe (cur, next, &vbuf_lists, valid_link)
     {
-        XDBG_REPLY ("%d\t(%dx%d,%d)\t%c%c%c%c\t%d\t%d\t%d\t%ld\t%s\n",
+        XDBG_REPLY ("%u\t(%dx%d,%d)\t%c%c%c%c\t%d\t%d\t%d\t%u\t%s\n",
                     cur->fb_id, cur->width, cur->height, cur->size,
                     FOURCC_STR (cur->id),
-                    cur->flags, cur->ref_cnt, cur->secure, cur->stamp, cur->func);
+                    cur->flags, cur->ref_cnt, cur->secure, cur->stamp.u32, cur->func);
     }
 
     return reply;
@@ -2396,4 +2394,20 @@ int findActiveConnector (ScrnInfoPtr pScrn)
         }
     }
   return actv_connector;
+}
+
+uniType
+setunitype32(uint32_t u32)
+{
+    uniType temp = {0};
+    temp.u32 = u32;
+    return temp;
+}
+
+uniType
+setunitypeptr(void* ptr)
+{
+    uniType temp = {0};
+    temp.ptr = ptr;
+    return temp;
 }

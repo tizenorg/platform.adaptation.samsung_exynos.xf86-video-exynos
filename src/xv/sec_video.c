@@ -382,10 +382,11 @@ _portAtom (SECPortAttrAtom paa)
 }
 
 static void
-_DestroyData (void *port, void *data)
+_DestroyData (uniType port, uniType data)
 {
-    SECPortPrivPtr pPort = (SECPortPrivPtr)port;
-    unsigned int handle = (unsigned int)data;
+    SECPortPrivPtr pPort = (SECPortPrivPtr)port.ptr;
+    uint32_t handle = data.u32;
+    XDBG_RETURN_IF_FAIL (pPort != NULL);
 
     secUtilFreeHandle (pPort->pScrn, handle);
 }
@@ -631,11 +632,11 @@ _secVideoGetKeys (SECPortPrivPtr pPort, unsigned int *keys, unsigned int *type)
 }
 
 static void
-_secVideoFreeInbuf (SECVideoBuf *vbuf, void *data)
+_secVideoFreeInbuf (SECVideoBuf *vbuf, uniType data)
 {
-    SECPortPrivPtr pPort = (SECPortPrivPtr)data;
+    SECPortPrivPtr pPort = (SECPortPrivPtr) data.ptr;
     int i;
-
+    XDBG_RETURN_IF_FAIL (pPort != NULL);
     XDBG_RETURN_IF_FAIL (pPort->drawing != ON_NONE);
 
     for (i = 0; i < INBUF_NUM; i++)
@@ -650,11 +651,11 @@ _secVideoFreeInbuf (SECVideoBuf *vbuf, void *data)
 }
 
 static void
-_secVideoFreeOutbuf (SECVideoBuf *vbuf, void *data)
+_secVideoFreeOutbuf (SECVideoBuf *vbuf, uniType data)
 {
-    SECPortPrivPtr pPort = (SECPortPrivPtr)data;
+    SECPortPrivPtr pPort = (SECPortPrivPtr) data.ptr;
     int i;
-
+    XDBG_RETURN_IF_FAIL (pPort != NULL);
     XDBG_RETURN_IF_FAIL (pPort->drawing != ON_NONE);
 
     for (i = 0; i < OUTBUF_NUM; i++)
@@ -815,8 +816,7 @@ _secVideoGetInbufZeroCopy (SECPortPrivPtr pPort, unsigned int *names, unsigned i
 
     /* not increase ref_cnt to free inbuf when converting/showing is done. */
     pPort->inbuf[empty] = inbuf;
-
-    secUtilAddFreeVideoBufferFunc (inbuf, _secVideoFreeInbuf, pPort);
+    secUtilAddFreeVideoBufferFunc (inbuf, _secVideoFreeInbuf, setunitypeptr(pPort));
 
     return inbuf;
 
@@ -931,7 +931,7 @@ _secVideoGetInbuf (SECPortPrivPtr pPort)
 
         inbuf = _secVideoGetInbufZeroCopy (pPort, keys, buf_type);
 
-        XDBG_TRACE (MVDO, "keys: %d,%d,%d. stamp(%ld)\n", keys[0], keys[1], keys[2], inbuf->stamp);
+        XDBG_TRACE (MVDO, "keys: %d,%d,%d. stamp(%lu)\n", keys[0], keys[1], keys[2], VSTMAP(inbuf));
     }
     else
         inbuf = _secVideoGetInbufRAW (pPort);
@@ -1027,8 +1027,7 @@ _secVideoGetOutbufDrawable (SECPortPrivPtr pPort)
 
     /* not increase ref_cnt to free outbuf when converting/showing is done. */
     pPort->outbuf[empty] = outbuf;
-
-    secUtilAddFreeVideoBufferFunc (outbuf, _secVideoFreeOutbuf, pPort);
+    secUtilAddFreeVideoBufferFunc (outbuf, _secVideoFreeOutbuf, setunitypeptr(pPort));
 
     return outbuf;
 
@@ -1143,7 +1142,7 @@ _secVideoCloseInBuffer (SECPortPrivPtr pPort)
     int i;
     if (pPort->gem_list)
     {
-        secUtilListDestroyData (pPort->gem_list, _DestroyData, pPort);
+        secUtilListDestroyData (pPort->gem_list, _DestroyData, setunitypeptr(pPort));
         secUtilListDestroy (pPort->gem_list);
         pPort->gem_list = NULL;
     }
@@ -1223,8 +1222,8 @@ _secVideoSendReturnBufferMessage (SECPortPrivPtr pPort, SECVideoBuf *vbuf, unsig
         event.u.clientMessage.u.l.longs1 = (INT32)vbuf->keys[1];
         event.u.clientMessage.u.l.longs2 = (INT32)vbuf->keys[2];
 
-        XDBG_TRACE (MVDO, "%ld: %d,%d,%d out. diff(%ld)\n", vbuf->stamp,
-                    vbuf->keys[0], vbuf->keys[1], vbuf->keys[2], GetTimeInMillis()-vbuf->stamp);
+        XDBG_TRACE (MVDO, "%ld: %d,%d,%d out. diff(%ld)\n", vbuf->stamp.u32,
+                    vbuf->keys[0], vbuf->keys[1], vbuf->keys[2], GetTimeInMillis()-vbuf->stamp.u32);
     }
     else if (keys)
     {
@@ -1248,11 +1247,11 @@ _secVideoSendReturnBufferMessage (SECPortPrivPtr pPort, SECVideoBuf *vbuf, unsig
             CARD32 cur, sub;
             cur = GetTimeInMillis ();
             sub = cur - vbuf->put_time;
-            ErrorF ("vbuf(%d,%d,%d)         retbuf  : %6ld ms\n",
+            ErrorF ("vbuf(%u,%u,%u)         retbuf  : %6"PRIXID" ms\n",
                     vbuf->keys[0], vbuf->keys[1], vbuf->keys[2], sub);
         }
         else if (keys)
-            ErrorF ("vbuf(%d,%d,%d)         retbuf  : 0 ms\n",
+            ErrorF ("vbuf(%u,%u,%u)         retbuf  : 0 ms\n",
                     keys[0], keys[1], keys[2]);
         else
             XDBG_NEVER_GET_HERE (MVDO);
@@ -2597,7 +2596,7 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
             _secVideoGetKeys (pPort, keys, NULL);
             snprintf (temp, sizeof(temp), "%d,%d,%d", keys[0], keys[1], keys[2]);
         }
-        ErrorF ("pPort(%p) put interval(%s) : %6ld ms\n", pPort, temp, sub);
+        ErrorF ("pPort(%p) put interval(%s) : %6"PRIXID" ms\n", pPort, temp, sub);
     }
 
     if (IS_ZEROCOPY (pPort->d.id))
@@ -2860,7 +2859,8 @@ SECVideoPutImage (ScrnInfoPtr pScrn,
                 if (pPort->inbuf[i] == inbuf)
                 {
                     pPort->inbuf[i] = NULL;
-                    secUtilRemoveFreeVideoBufferFunc (inbuf, _secVideoFreeInbuf, pPort);
+                    secUtilRemoveFreeVideoBufferFunc (inbuf, _secVideoFreeInbuf,
+                                                      setunitypeptr(pPort));
                     break;
                 }
             XDBG_WARNING_IF_FAIL (inbuf->ref_cnt == 1);

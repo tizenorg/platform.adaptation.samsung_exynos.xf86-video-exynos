@@ -268,6 +268,7 @@ present_set_tree_pixmap_visit(WindowPtr window, void *data)
     return WT_WALKCHILDREN;
 }
 
+#ifdef PRESENT_SWAP
 static void
 present_set_tree_pixmap(WindowPtr window, PixmapPtr pixmap)
 {
@@ -280,13 +281,17 @@ present_set_tree_pixmap(WindowPtr window, PixmapPtr pixmap)
         return;
     TraverseTree(window, present_set_tree_pixmap_visit, &visit);
 }
+#endif
 
+#ifdef PRESENT_SWAP
 static
 Bool _useSwapingDRI3(SECPtr pSec)
 {
     return pSec->dri3_copy_type != dri3_copy_xserver;
 }
+#endif
 
+#ifdef PRESENT_SWAP
 static Bool
 SECPresentCopyRegion(DrawablePtr pDraw, PixmapPtr pBackPix,
         RegionPtr pUpdate, int16_t x_off, int16_t y_off)
@@ -407,7 +412,7 @@ SECPresentCopyRegion(DrawablePtr pDraw, PixmapPtr pBackPix,
 
     return TRUE;
 }
-
+#endif
 static Bool
 SECPresentFlip(RRCrtcPtr		pRRcrtc,
                    uint64_t		event_id,

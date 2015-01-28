@@ -1431,7 +1431,7 @@ secDisplayGetDispConnMode (ScrnInfoPtr pScrn)
 }
 
 Bool
-secDisplayGetCurMSC (ScrnInfoPtr pScrn, int pipe, CARD64 *ust, CARD64 *msc)
+secDisplayGetCurMSC (ScrnInfoPtr pScrn, uintptr_t pipe, CARD64 *ust, CARD64 *msc)
 {
     drmVBlank vbl;
     int ret;
@@ -1591,7 +1591,7 @@ secDisplayDrawablePipe (DrawablePtr pDraw)
     return pipe;
 }
 
-int
+uintptr_t
 secDisplayCrtcPipe (ScrnInfoPtr pScrn, int crtc_id)
 {
     xf86CrtcConfigPtr pCrtcConfig = XF86_CRTC_CONFIG_PTR (pScrn);
