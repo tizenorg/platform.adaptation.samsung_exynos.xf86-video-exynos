@@ -1111,7 +1111,8 @@ _secVirtualStillCompositeExtLayers (SECPortPrivPtr pPort, int connector_type, Bo
     if (!complete)
     {
         /* check if operation in process*/
-        if (pPort->wait_rgb_convert) goto convert_ipp_still;
+        if (pPort->wait_rgb_convert)
+            goto convert_ipp_still;
 
         if (lower_layer)
         {
@@ -1136,12 +1137,13 @@ _secVirtualStillCompositeExtLayers (SECPortPrivPtr pPort, int connector_type, Bo
                 comp = TRUE;
              }
         }
-    } else
-         {
-          if (pPort->capture_dstbuf)
-          dst_buf = pPort->capture_dstbuf;
-          pPort->wait_rgb_convert = FALSE;
-         }
+    }
+    else
+    {
+        if (pPort->capture_dstbuf)
+            dst_buf = pPort->capture_dstbuf;
+        pPort->wait_rgb_convert = FALSE;
+    }
 
     pix_buf = _secVirtualVideoGetDrawableBuffer (pPort);
     XDBG_GOTO_IF_FAIL (pix_buf != NULL, done_ipp_still);
