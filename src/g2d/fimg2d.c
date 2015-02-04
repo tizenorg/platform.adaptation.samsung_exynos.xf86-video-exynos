@@ -303,19 +303,28 @@ g2d_image_create_bo (G2dColorMode format, unsigned int width, unsigned int heigh
 
         /* Map gembuffer */
         {
-            struct drm_exynos_gem_mmap arg_map;
+            struct drm_mode_map_dumb arg_map;
+            void *map = NULL;
 
             memset(&arg_map, 0, sizeof(arg_map));
             arg_map.handle = arg.handle;
-            arg_map.size = arg.size;
-            if(drmCommandWriteRead(gCtx->drm_fd, DRM_EXYNOS_GEM_MMAP, &arg_map, sizeof(arg_map)))
+            if (drmIoctl (gCtx->drm_fd, DRM_IOCTL_MODE_MAP_DUMB, &arg_map))
             {
-                XDBG_ERROR (MG2D, "Cannot map offset bo image\n");
+                XDBG_ERROR (MG2D, "Cannot map dumb gem=%d\n", arg.handle);
                 free(img);
                 return NULL;
             }
 
-            img->mapped_ptr[0] = (void*)(unsigned long)arg_map.mapped;
+            map = mmap (NULL, arg.size, PROT_READ|PROT_WRITE, MAP_SHARED,
+                              gCtx->drm_fd, arg_map.offset);
+            if (map == MAP_FAILED)
+            {
+                XDBG_ERROR (MG2D, "Cannot usrptr gem=%d\n", arg.handle);
+                free(img);
+                return NULL;
+            }
+
+            img->mapped_ptr[0] = map;
         }
 
         img->stride = stride;
@@ -447,21 +456,28 @@ g2d_image_create_data (G2dColorMode format, unsigned int width, unsigned int hei
 
         /* Map gembuffer */
         {
-            struct drm_exynos_gem_mmap arg_map;
+            struct drm_mode_map_dumb arg_map;
+            void *map = NULL;
 
             memset(&arg_map, 0, sizeof(arg_map));
             arg_map.handle = arg.handle;
-            arg_map.size = arg.size;
-            if(drmCommandWriteRead(gCtx->drm_fd,
-                                                    DRM_EXYNOS_GEM_MMAP,
-                                                    &arg_map, sizeof(arg_map)))
+            if (drmIoctl (gCtx->drm_fd, DRM_IOCTL_MODE_MAP_DUMB, &arg_map))
             {
-                XDBG_ERROR (MG2D, "Cannot map offset bo image\n");
+                XDBG_ERROR (MG2D, "Cannot map dumb gem=%d\n", arg.handle);
                 free(img);
                 return NULL;
             }
 
-            img->mapped_ptr[0] = (void*)(unsigned long)arg_map.mapped;
+            map = mmap (NULL, arg.size, PROT_READ|PROT_WRITE, MAP_SHARED,
+                              gCtx->drm_fd, arg_map.offset);
+            if (map == MAP_FAILED)
+            {
+                XDBG_ERROR (MG2D, "Cannot usrptr gem=%d\n", arg.handle);
+                free(img);
+                return NULL;
+            }
+
+            img->mapped_ptr[0] = map;
         }
 
         img->stride = stride;
