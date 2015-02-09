@@ -1266,7 +1266,9 @@ secDisplaySetDispSetMode  (ScrnInfoPtr pScrn, SECDisplaySetMode set_mode)
 {
     SECPtr pSec = SECPTR (pScrn);
     SECModePtr pSecMode = pSec->pSecMode;
-
+#ifdef NO_CRTC_MODE
+    return TRUE;
+#endif
     if (pSecMode->set_mode == set_mode)
     {
         XDBG_INFO (MDISP, "set_mode(%d) is already set\n", set_mode);
@@ -1313,7 +1315,7 @@ secDisplaySetDispSetMode  (ScrnInfoPtr pScrn, SECDisplaySetMode set_mode)
 
             XDBG_TRACE (MWB, "wb_hz(%d) vrefresh(%d)\n", pSec->wb_hz, pSecMode->ext_connector_mode.vrefresh);
 
-            pSec->wb_clone = secWbOpen (pScrn, FOURCC_ST12, 0, 0, (pSec->scanout)?TRUE:FALSE, wb_hz, TRUE);
+            pSec->wb_clone = secWbOpen (pScrn, FOURCC_SN12, 0, 0, (pSec->scanout)?TRUE:FALSE, wb_hz, TRUE);
             if (pSec->wb_clone)
             {
                 secWbAddNotifyFunc (pSec->wb_clone, WB_NOTI_CLOSED,

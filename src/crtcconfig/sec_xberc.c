@@ -1230,7 +1230,7 @@ secXbercSetProperty (xf86OutputPtr output, Atom property, RRPropertyValuePtr val
     if (rr_property_atom != property)
     {
         _secXbercSetReturnProperty (value, "[Xberc]: Unrecognized property name.\n");
-        return FALSE;
+        return TRUE;
     }
 
     if (_secXbercParseArg (&argc, argv, value) == FALSE || argc < 1)
